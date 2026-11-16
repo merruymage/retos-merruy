@@ -6,8 +6,8 @@
   <title>Búsqueda del Tesoro QR - ¡Feliz Cumpleaños!</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <!-- Google Fonts (Incluye fuentes Coder y Retro RPG) -->
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=JetBrains+Mono:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
   <!-- Canvas Confetti CDN -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
   <!-- QRious QR Generator CDN -->
@@ -19,6 +19,8 @@
     :root {
       --font-display: 'Fredoka', sans-serif;
       --font-body: 'Plus Jakarta Sans', sans-serif;
+      --font-coder: 'JetBrains Mono', monospace;
+      --font-pixel: 'Press Start 2P', monospace;
     }
     body {
       font-family: var(--font-body);
@@ -27,6 +29,39 @@
     }
     h1, h2, h3, .font-display {
       font-family: var(--font-display);
+    }
+    .font-coder {
+      font-family: var(--font-coder);
+    }
+    .font-pixel {
+      font-family: var(--font-pixel);
+    }
+
+    /* Cursor parpadeante estilo Terminal Coder */
+    @keyframes cursor-blink {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+    .coder-cursor {
+      display: inline-block;
+      width: 9px;
+      height: 1.15em;
+      background-color: #34d399;
+      vertical-align: text-bottom;
+      margin-left: 3px;
+      animation: cursor-blink 0.8s infinite;
+    }
+
+    /* Efecto Scanline sutil para la terminal RPG */
+    .rpg-scanlines {
+      background: linear-gradient(
+        to bottom,
+        rgba(255,255,255,0),
+        rgba(255,255,255,0) 50%,
+        rgba(0, 0, 0, 0.22) 50%,
+        rgba(0, 0, 0, 0.22)
+      );
+      background-size: 100% 4px;
     }
 
     /* Animaciones de Caja de Regalo */
@@ -39,6 +74,15 @@
     }
     .animate-gift-idle {
       animation: gift-wobble 2.2s infinite ease-in-out;
+    }
+
+    /* Animación flotante para el ícono personalizado */
+    @keyframes float-badge {
+      0%, 100% { transform: translateY(0px) scale(1); }
+      50% { transform: translateY(-6px) scale(1.05); }
+    }
+    .animate-float-icon {
+      animation: float-badge 2.6s infinite ease-in-out;
     }
 
     /* Animación de la pata del Maneki-neko (QR #14) */
@@ -69,16 +113,17 @@
       animation: eq-bounce 0.6s infinite ease-in-out alternate;
     }
 
-    /* Resplandor dorado para QR #14 */
-    @keyframes spin-slow {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
+    /* Animación de Burbujas Flotantes */
+    @keyframes bubble-float {
+      0%, 100% { transform: translateY(0px) translateX(0px) scale(1); }
+      33% { transform: translateY(-10px) translateX(4px) scale(1.04); }
+      66% { transform: translateY(5px) translateX(-4px) scale(0.98); }
     }
-    .animate- rays {
-      animation: spin-slow 18s linear infinite;
+    .floating-bubble {
+      animation: bubble-float 3.8s infinite ease-in-out;
     }
 
-    /* Estilos de Impresión para la hoja de 20 QRs */
+    /* Estilos de Impresión para la hoja de QRs */
     @media print {
       body * {
         visibility: hidden;
@@ -102,21 +147,30 @@
 </head>
 <body class="bg-slate-950 text-white min-h-screen flex flex-col justify-between selection:bg-pink-500 selection:text-white">
 
-  <!-- Barra Superior Discreta -->
-  <header class="w-full px-4 py-3 flex items-center justify-between z-30 no-print">
-    <div class="flex items-center gap-2 bg-white/10 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/15 shadow-sm">
-      <span class="text-lg">🎂</span>
-      <span class="text-xs font-bold tracking-wider uppercase text-pink-200">Tesoro QR</span>
+  <!-- Barra Superior Limpia (Sin botón Organizador visible para los invitados) -->
+  <header class="w-full px-4 py-3 flex items-center justify-between z-30 no-print max-w-md mx-auto gap-2">
+    <!-- Toque secreto: Tocar 5 veces seguidas aquí abre el Panel del Organizador -->
+    <button onclick="handleSecretTap()" class="flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/15 shadow-sm select-none active:scale-95 transition shrink-0" title="Insignia del Tesoro">
+      <span class="text-base">🎂</span>
+      <span class="text-[11px] font-bold tracking-wider uppercase text-pink-200">Tesoro</span>
       <span id="qr-badge-number" class="bg-pink-500 text-white text-xs font-extrabold px-2 py-0.5 rounded-full">#1</span>
-    </div>
+    </button>
 
-    <div class="flex items-center gap-2">
-      <button id="btn-sound-toggle" onclick="toggleSound()" class="p-2.5 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 transition active:scale-95" title="Efectos de sonido">
-        <i data-lucide="volume-2" class="w-4 h-4 text-pink-200"></i>
+    <div class="flex items-center gap-1.5">
+      <!-- Botón para ir a la Zona de Burbujas Flotantes + Contador de Checks -->
+      <button onclick="goToBubblesHub()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-cyan-500/25 to-pink-500/25 hover:from-cyan-500/35 hover:to-pink-500/35 backdrop-blur-md border border-cyan-400/40 text-xs font-extrabold text-cyan-200 transition active:scale-95 shadow-sm" title="Ver Burbujas Flotantes y Progreso">
+        <span>🫧 Burbujas</span>
+        <span id="header-progress-pill" class="bg-emerald-500 text-slate-950 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full">0/20</span>
       </button>
-      <button onclick="toggleOrganizerModal(true)" class="flex items-center gap-1.5 px-3 py-2 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 text-xs font-semibold text-slate-200 transition active:scale-95" title="Modo Organizador / Ver los 20 QRs">
-        <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 text-amber-300"></i>
-        <span>Organizador</span>
+
+      <!-- Botón Organizador OCULTO por defecto; solo se muestra si se desbloquea o se entra con #admin -->
+      <button id="btn-organizer- trigger" onclick="toggleOrganizerModal(true)" class="hidden items-center gap-1.5 px-3 py-2 rounded-full bg-amber-500/20 hover:bg-amber-500/30 backdrop-blur-md border border-amber-400/40 text-xs font-bold text-amber-300 transition active:scale-95">
+        <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i>
+        <span class="hidden sm:inline">Organizador</span>
+      </button>
+
+      <button id="btn-sound-toggle" onclick="toggleSound()" class="p-2 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 transition active:scale-95" title="Efectos de sonido">
+        <i data-lucide="volume-2" class="w-4 h-4 text-pink-200"></i>
       </button>
     </div>
   </header>
@@ -126,88 +180,188 @@
     <!-- Renderizado dinámico por JS -->
   </main>
 
-  <!-- Navegador Rápido Inferior (Opcional para probar rápido o pasar de QR) -->
-  <footer class="w-full max-w-md mx-auto px-4 py-3 flex items-center justify-between text-xs text-slate-400 z-20 no-print">
-    <button onclick="navigateRelative(-1)" class="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition active:scale-95">
-      <i data-lucide="chevron-left" class="w-4 h-4"></i> Anterior
-    </button>
-    <button onclick="toggleOrganizerModal(true)" class="text-slate-400 hover:text-white underline underline-offset-4">
-      Explorar los 20 QRs
-    </button>
-    <button onclick="navigateRelative(1)" class="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition active:scale-95">
-      Siguiente <i data-lucide="chevron-right" class="w-4 h-4"></i>
-    </button>
+  <!-- Pie de página minimalista -->
+  <footer class="w-full max-w-md mx-auto px-4 py-3 text-center text-[11px] text-slate-500 z-20 no-print">
+    <span>✨ Dinámica Interactiva de Cumpleaños ✨</span>
   </footer>
 
   <!-- =====================================================================
-       MODAL DEL ORGANIZADOR (Selector de 20 QRs, Editor en Vivo e Impresión)
+       MODAL DEL ORGANIZADOR (Oculto para invitados; accesible con 5 toques o #admin)
        ===================================================================== -->
-  <div id="organizer-modal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-xl hidden flex-col no-print">
+  <div id="organizer-modal" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-xl hidden flex-col no-print">
     <!-- Cabecera del Modal -->
-    <div class="px-5 py-4 border-b border-white/10 flex items-center justify-between max-w-4xl w-full mx-auto">
+    <div class="px-5 py-4 border-b border-white/10 flex items-center justify-between max-w-5xl w-full mx-auto">
       <div class="flex items-center gap-2.5">
         <span class="p-2 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-400/30">
           <i data-lucide="sparkles" class="w-5 h-5"></i>
         </span>
         <div>
           <h2 class="text-lg font-bold text-white leading-tight">Panel de Control del Organizador</h2>
-          <p class="text-xs text-slate-400">Previsualiza las 20 rutas, edita premios o imprime los QRs</p>
+          <p class="text-xs text-slate-400">Acceso privado • Agrega o quita QRs, cambia imágenes e imprime</p>
         </div>
       </div>
-      <button onclick="toggleOrganizerModal(false)" class="p-2 rounded-full bg-white/10 hover:bg-white/20 text-slate-300">
-        <i data-lucide="x" class="w-5 h-5"></i>
-      </button>
+      <div class="flex items-center gap-2">
+        <button onclick="downloadUpdatedHTML()" class="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs transition shadow-lg shadow-emerald-500/20" title="Descarga el archivo index.html con tus cambios grabados adentro para subirlo a GitHub Pages">
+          <i data-lucide="download" class="w-4 h-4"></i> Guardar index.html
+        </button>
+        <button onclick="toggleOrganizerModal(false)" class="p-2 rounded-full bg-white/10 hover:bg-white/20 text-slate-300">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
     </div>
 
     <!-- Pestañas del Modal -->
-    <div class="px-5 pt-3 border-b border-white/10 flex gap-2 max-w-4xl w-full mx-auto overflow-x-auto">
-      <button onclick="switchOrganizerTab('selector')" id="tab-btn-selector" class="px-4 py-2 text-xs font-bold rounded-t-xl border-b-2 border-pink-500 text-pink-400 bg-white/5">
-        🎯 Selector de 20 QRs
+    <div class="px-5 pt-3 border-b border-white/10 flex gap-2 max-w-5xl w-full mx-auto overflow-x-auto">
+      <button onclick="switchOrganizerTab('editor')" id="tab-btn-editor" class="px-4 py-2 text-xs font-bold rounded-t-xl border-b-2 border-pink-500 text-pink-400 bg-white/5 shrink-0">
+        ✏️ Editar / Agregar / Quitar QRs (<span id="count-tab-editor">20</span>)
       </button>
-      <button onclick="switchOrganizerTab('print')" id="tab-btn-print" class="px-4 py-2 text-xs font-bold rounded-t-xl border-b-2 border-transparent text-slate-400 hover:text-white">
-        🖨️ Generar e Imprimir 20 QRs
+      <button onclick="switchOrganizerTab('selector')" id="tab-btn-selector" class="px-4 py-2 text-xs font-bold rounded-t-xl border-b-2 border-transparent text-slate-400 hover:text-white shrink-0">
+        🎯 Vista Previa de Pantallas
       </button>
-      <button onclick="switchOrganizerTab('editor')" id="tab-btn-editor" class="px-4 py-2 text-xs font-bold rounded-t-xl border-b-2 border-transparent text-slate-400 hover:text-white">
-        ✏️ Editar Premios y Retos
+      <button onclick="switchOrganizerTab('print')" id="tab-btn-print" class="px-4 py-2 text-xs font-bold rounded-t-xl border-b-2 border-transparent text-slate-400 hover:text-white shrink-0">
+        🖨️ Generar e Imprimir QRs
       </button>
     </div>
 
     <!-- Contenido del Modal -->
-    <div class="flex-1 overflow-y-auto p-5 max-w-4xl w-full mx-auto">
+    <div class="flex-1 overflow-y-auto p-4 sm:p-5 max-w-5xl w-full mx-auto">
       
-      <!-- TAB 1: Selector Rápido de las 20 Pantallas -->
-      <div id="tab-content-selector" class="space-y-4">
-        <div class="flex flex-wrap gap-2 text-xs">
-          <span class="px-2.5 py-1 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/30">🎁 9 Regalos Directos</span>
-          <span class="px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">🐱 1 Especial (#14 Maneki-neko)</span>
-          <span class="px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">⏱️ 4 Retos Físicos (60s)</span>
-          <span class="px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">🎭 4 Subastas / Engaño</span>
-          <span class="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">💃 2 Retos de Baile</span>
+      <!-- TAB 1: Editor Dinámico (Agregar, Quitar con X, Cambiar Imágenes y Textos) -->
+      <div id="tab-content-editor" class="space-y-4">
+        <!-- Barra de herramientas de edición -->
+        <div class="bg-slate-900 border border-white/10 p-4 rounded-2xl space-y-3">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 class="text-sm font-bold text-white">Gestión Dinámica de Códigos QR</h3>
+              <p class="text-xs text-slate-400">
+                Puedes aumentar o disminuir la cantidad de QRs. Para que los cambios se vean en cualquier celular en GitHub Pages, descarga el nuevo <code class="text-emerald-300">index.html</code> o reimprime los QRs desde la pestaña Imprimir.
+              </p>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <button onclick="resetCompletedProgress()" class="px-3 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-200 border border-cyan-400/40 rounded-xl text-xs font-bold transition" title="Desmarca todos los QRs completados para empezar el juego desde cero">
+                🔄 Reiniciar Checks (0/20)
+              </button>
+              <button onclick="downloadUpdatedHTML()" class="flex items-center gap-1.5 px-3 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-xs font-extrabold transition">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i> Descargar index.html
+              </button>
+              <button onclick="resetDefaultData()" class="px-3 py-2 bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/30 rounded-xl text-xs font-bold transition">
+                Restaurar 20 Base
+              </button>
+            </div>
+          </div>
+
+          <!-- Botones para Agregar Nuevos QRs -->
+          <div class="pt-2 border-t border-white/10">
+            <span class="block text-[11px] font-bold uppercase tracking-wider text-amber-300 mb-2">
+              ➕ Agregar nuevo código QR al final de la lista:
+            </span>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="addNewQRItem('gift')" class="px-3 py-2 rounded-xl bg-pink-500/20 hover:bg-pink-500/30 border border-pink-400/40 text-pink-200 text-xs font-bold transition active:scale-95">
+                + 🎁 Agregar Premio Directo
+              </button>
+              <button onclick="addNewQRItem('physical')" class="px-3 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-200 text-xs font-bold transition active:scale-95">
+                + ⏱️ Agregar Reto Físico
+              </button>
+              <button onclick="addNewQRItem('auction')" class="px-3 py-2 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/40 text-purple-200 text-xs font-bold transition active:scale-95">
+                + 🎭 Agregar Subasta / Engaño
+              </button>
+              <button onclick="addNewQRItem('dance')" class="px-3 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/40 text-emerald-200 text-xs font-bold transition active:scale-95">
+                + 💃 Agregar Reto de Baile
+              </button>
+              <button onclick="addNewQRItem('maneki')" class="px-3 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-200 text-xs font-bold transition active:scale-95">
+                + 🐱 Agregar Especial Maneki
+              </button>
+              <button onclick="addNewQRItem('rpg_birthday')" class="px-3 py-2 rounded-xl bg-lime-500/20 hover:bg-lime-500/30 border border-lime-400/40 text-lime-200 text-xs font-bold transition active:scale-95">
+                + 💻 Agregar Cumpleaños Coder/RPG
+              </button>
+            </div>
+          </div>
         </div>
 
+        <!-- TARJETA ESPECIAL DE PERSONALIZACIÓN: MENSAJE FINAL DE CUMPLEAÑOS ESTILO CODER + RPG -->
+        <div class="bg-gradient-to-r from-emerald-950/90 via-slate-900 to-indigo-950/90 border-2 border-emerald-400/50 rounded-2xl p-4 space-y-3 shadow-lg shadow-emerald-950/40">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-400/20 pb-2.5">
+            <div class="flex items-center gap-2.5">
+              <span class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-xl">💻</span>
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-extrabold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-400 text-slate-950 font-coder">FINAL BOSS / CODER RPG</span>
+                  <h4 class="text-sm font-bold text-white">Mensaje Final de Feliz Cumpleaños (Estilo Coder + Música RPG 8-Bit)</h4>
+                </div>
+                <p class="text-[11px] text-emerald-200/80">Se muestra al escanear el QR Final (#cumple) o al tocar el botón de Mensaje Final</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="goToFinalBirthday(); toggleOrganizerModal(false);" class="px-3 py-1.5 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-extrabold text-xs transition">
+                ▶ Probar Pantalla Coder/RPG →
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="text-[10px] uppercase text-emerald-300 font-bold font-coder">Título de la Consola / Misión</label>
+              <input id="rpg-cfg-title" type="text" oninput="updateBirthdayRPGConfig('title', this.value)" class="w-full bg-slate-950 border border-emerald-500/30 rounded-xl px-3 py-2 text-xs text-emerald-200 font-coder focus:border-emerald-400 focus:outline-none" />
+            </div>
+            <div>
+              <label class="text-[10px] uppercase text-emerald-300 font-bold font-coder">Subtítulo / Nivel Desbloqueado</label>
+              <input id="rpg-cfg-subtitle" type="text" oninput="updateBirthdayRPGConfig('subtitle', this.value)" class="w-full bg-slate-950 border border-emerald-500/30 rounded-xl px-3 py-2 text-xs text-emerald-200 font-coder focus:border-emerald-400 focus:outline-none" />
+            </div>
+          </div>
+
+          <div>
+            <label class="text-[10px] uppercase text-emerald-300 font-bold font-coder">Escrito Personalizable (Se escribirá letra por letra con sonido RPG y música de fondo)</label>
+            <textarea id="rpg-cfg-message" rows="5" oninput="updateBirthdayRPGConfig('message', this.value)" class="w-full bg-slate-950 border border-emerald-500/30 rounded-xl px-3 py-2 text-xs text-emerald-300 font-coder leading-relaxed focus:border-emerald-400 focus:outline-none"></textarea>
+          </div>
+        </div>
+
+        <!-- Lista de Tarjetas Editables -->
+        <div id="editor-list" class="space-y-3">
+          <!-- Generado por JS -->
+        </div>
+
+        <!-- Botones inferiores para agregar rápido -->
+        <div class="bg-slate-900/70 border border-white/10 p-4 rounded-2xl text-center space-y-2">
+          <p class="text-xs text-slate-400 font-semibold">¿Quieres añadir otro QR más?</p>
+          <div class="flex flex-wrap justify-center gap-2">
+            <button onclick="addNewQRItem('gift')" class="px-3 py-1.5 rounded-xl bg-pink-500/20 text-pink-200 border border-pink-500/30 text-xs font-bold">+ 🎁 Premio</button>
+            <button onclick="addNewQRItem('physical')" class="px-3 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-200 border border-cyan-500/30 text-xs font-bold">+ ⏱️ Reto Físico</button>
+            <button onclick="addNewQRItem('auction')" class="px-3 py-1.5 rounded-xl bg-purple-500/20 text-purple-200 border border-purple-500/30 text-xs font-bold">+ 🎭 Subasta</button>
+            <button onclick="addNewQRItem('dance')" class="px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-200 border border-emerald-500/30 text-xs font-bold">+ 💃 Baile</button>
+            <button onclick="addNewQRItem('rpg_birthday')" class="px-3 py-1.5 rounded-xl bg-lime-500/20 text-lime-200 border border-lime-500/30 text-xs font-bold">+ 💻 Cumpleaños RPG</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: Selector Rápido de Pantallas -->
+      <div id="tab-content-selector" class="hidden space-y-4">
         <div id="organizer-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <!-- Generado por JS -->
         </div>
       </div>
 
-      <!-- TAB 2: Generador de Códigos QR Listos para Imprimir -->
+      <!-- TAB 3: Generador de Códigos QR Listos para Imprimir -->
       <div id="tab-content-print" class="hidden space-y-5">
         <div class="bg-slate-900 border border-white/10 rounded-2xl p-4 space-y-3">
           <label class="block text-xs font-bold uppercase tracking-wider text-amber-300">
-            URL Base donde alojaste tu web (GitHub Pages, Netlify, Vercel):
+            URL de tu página en GitHub Pages:
           </label>
           <div class="flex flex-col sm:flex-row gap-2">
-            <input id="input-base-url" type="text" class="flex-1 bg-slate-950 border border-white/15 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-pink-500" placeholder="https://cumple-tesoro.netlify.app/" />
+            <input id="input-base-url" type="text" class="flex-1 bg-slate-950 border border-white/15 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-pink-500" placeholder="https://tu-usuario.github.io/tu-repo/" />
             <button onclick="renderPrintableQRs()" class="px-4 py-2.5 bg-pink-600 hover:bg-pink-500 text-white font-bold text-xs rounded-xl transition">
-              Actualizar QRs
+              🔄 Refrescar QRs
             </button>
             <button onclick="window.print()" class="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-xl transition flex items-center justify-center gap-1.5">
-              <i data-lucide="printer" class="w-4 h-4"></i> Imprimir Hoja A4
+              <i data-lucide="printer" class="w-4 h-4"></i> Imprimir QRs
             </button>
           </div>
-          <p class="text-xs text-slate-400">
-            💡 Cada código QR apuntará automáticamente a <code class="text-pink-300">TU_URL/#qr-1</code> hasta <code class="text-pink-300">#qr-20</code>.
-          </p>
+
+          <div class="flex items-center gap-2 pt-1">
+            <input id="chk-embed-data" type="checkbox" checked onchange="renderPrintableQRs()" class="w-4 h-4 accent-pink-500 rounded cursor-pointer" />
+            <label for="chk-embed-data" class="text-xs text-emerald-300 font-semibold cursor-pointer">
+              ✅ Incrustar textos e íconos editados directamente dentro del QR (Garantiza que cualquier celular vea tus cambios al instante)
+            </label>
+          </div>
         </div>
 
         <div id="qr-preview-sheet" class="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white text-slate-900 p-4 rounded-2xl">
@@ -215,166 +369,237 @@
         </div>
       </div>
 
-      <!-- TAB 3: Editor de Textos de Premios y Retos -->
-      <div id="tab-content-editor" class="hidden space-y-4">
-        <div class="flex items-center justify-between bg-slate-900 border border-white/10 p-4 rounded-2xl">
-          <p class="text-xs text-slate-300">
-            Personaliza el título o descripción de cualquiera de los 20 QRs. Los cambios se guardan en el navegador o puedes copiar el bloque JSON para pegarlo fijo en el código.
-          </p>
-          <button onclick="resetDefaultData()" class="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 rounded-xl text-xs font-bold shrink-0 ml-3">
-            Restaurar Originales
-          </button>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       MODAL SELECTOR DE IMÁGENES / ÍCONOS CUSTOMIZABLES
+       ===================================================================== -->
+  <div id="icon-picker-modal" class="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md hidden items-center justify-center p-4 no-print">
+    <div class="bg-slate-900 border border-white/15 rounded-3xl max-w-lg w-full p-5 shadow-2xl space-y-4 max-h-[88vh] flex flex-col">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <div>
+          <h3 class="text-base font-bold text-white">🎨 Selecciona una Imagen o Ícono</h3>
+          <p class="text-xs text-slate-400">Elige un ícono temático o pega el enlace de una imagen personalizada</p>
         </div>
-        <div id="editor-list" class="space-y-3">
-          <!-- Formulario de los 20 items generado por JS -->
-        </div>
+        <button onclick="closeIconPicker()" class="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-slate-300">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
       </div>
 
+      <!-- Galería de Íconos Temáticos -->
+      <div class="flex-1 overflow-y-auto space-y-3 pr-1">
+        <div id="icon-picker-grid" class="grid grid-cols-5 sm:grid-cols-6 gap-2.5">
+          <!-- Llenado por JS -->
+        </div>
+
+        <!-- Opción para Imagen Personalizada por URL -->
+        <div class="pt-3 border-t border-white/10 space-y-2">
+          <label class="block text-[11px] font-bold uppercase text-amber-300">
+            🖼️ ¿Prefieres usar una foto o imagen web? Pega su URL aquí:
+          </label>
+          <div class="flex gap-2">
+            <input id="custom-img-url-input" type="url" placeholder="https://ejemplo.com/mi-imagen.png" class="flex-1 bg-slate-950 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-pink-500" />
+            <button onclick="selectCustomImageUrl()" class="px-3.5 py-2 rounded-xl bg-pink-600 hover:bg-pink-500 text-white text-xs font-bold shrink-0">
+              Usar Imagen
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
   <!-- Área exclusiva para Impresión en Papel -->
   <div id="print-area" class="hidden print:block p-6">
-    <h1 class="text-2xl font-bold text-center mb-2">🎂 Búsqueda del Tesoro QR - Hoja de Códigos (1 al 20)</h1>
-    <p class="text-xs text-center text-gray-600 mb-6">Recorta cada tarjeta y escóndela o pégala en el sobre/regalo correspondiente.</p>
+    <h1 class="text-2xl font-bold text-center mb-1">🎂 Búsqueda del Tesoro QR</h1>
+    <p class="text-xs text-center text-gray-600 mb-6">Recorta cada código QR y escóndelo o pégalo en el regalo correspondiente.</p>
     <div id="print-qr-grid" class="grid grid-cols-4 gap-4"></div>
   </div>
 
   <script>
     /*************************************************************************
-     * 1. CONFIGURACIÓN DE LOS 20 CÓDIGOS QR (Fácil de editar antes del evento)
-     * -----------------------------------------------------------------------
-     * Tipos disponibles ('type'):
-     *  - 'gift'     : Regalo directo con caja interactiva y confeti (9 QRs)
-     *  - 'maneki'   : Especial QR #14 con Gato de la Suerte Maneki-neko animado (1 QR)
-     *  - 'physical' : Reto físico con temporizador visual de 60 segundos (4 QRs)
-     *  - 'auction'  : Dinámica de Subasta / Engaño entre Opción A y B (4 QRs)
-     *  - 'dance'    : Reto de Baile con ecualizador neón animado (2 QRs)
+     * 1. GALERÍA DE IMÁGENES / ÍCONOS SELECCIONABLES
      *************************************************************************/
+    const ICON_GALLERY = [
+      { icon: '🎁', label: 'Regalo' },
+      { icon: '☕', label: 'Cafecito' },
+      { icon: '🕶️', label: 'Lentes' },
+      { icon: '🎀', label: 'Sorpresa' },
+      { icon: '🌸', label: 'Aroma/Flor' },
+      { icon: '📦', label: 'Caja' },
+      { icon: '🍀', label: 'Suerte #13' },
+      { icon: '🐱', label: 'Maneki' },
+      { icon: '🎉', label: 'Fiesta' },
+      { icon: '💎', label: 'Joya' },
+      { icon: '🔌', label: 'Cable Red' },
+      { icon: '🪢', label: 'Nudo' },
+      { icon: '🥢', label: 'Palillos' },
+      { icon: '🎭', label: 'Subasta' },
+      { icon: '🛍️', label: 'Bolsas' },
+      { icon: '✉️', label: 'Sobres' },
+      { icon: '💃', label: 'Baile' },
+      { icon: '🪩', label: 'Bola Disco' },
+      { icon: '🏆', label: 'Gran Premio' },
+      { icon: '💻', label: 'Coder/PC' },
+      { icon: '🎮', label: 'Videojuego' },
+      { icon: '👾', label: 'Arcade RPG' },
+      { icon: '💄', label: 'Maquillaje' },
+      { icon: '🧴', label: 'Skincare' },
+      { icon: '🍫', label: 'Chocolate' },
+      { icon: '🍰', label: 'Postre' },
+      { icon: '🧋', label: 'Boba / Té' },
+      { icon: '🍷', label: 'Brindis' },
+      { icon: '🍕', label: 'Cena' },
+      { icon: '🎧', label: 'Música' },
+      { icon: '🕯️', label: 'Vela' },
+      { icon: '👗', label: 'Outfits' },
+      { icon: '👜', label: 'Cartera' },
+      { icon: '👑', label: 'Reina' },
+      { icon: '🧸', label: 'Peluche' },
+      { icon: '💳', label: 'Gift Card' }
+    ];
+
+    /*************************************************************************
+     * 2. TUS 20 TEXTOS EXACTOS DE LAS CAPTURAS + MENSAJE FINAL CODER RPG
+     *************************************************************************/
+    /*__START_DEFAULT_DATA__*/
+    const DEFAULT_BIRTHDAY_RPG = {
+      title: '🎂 QUEST COMPLETE: ¡FELIZ CUMPLEAÑOS!',
+      subtitle: 'LVL UP! +1 AÑO DE SABIDURÍA, ÉXITO Y BUENA VIBRA',
+      message: `> Iniciando protocolo: birthday_celebration.exe...\n> Escaneando inventario de tesoros... [20/20 COMPLETADO]\n\n¡FELIZ CUMPLEAÑOS! 🎉✨\nHas superado cada reto, subasta y código misterioso de esta aventura.\n\nQue este nuevo nivel de vida venga cargado de:\n  [+] Salud infinita y energía al 100%\n  [+] Nuevas aventuras, viajes y metas cumplidas\n  [+] Mucho éxito, risas y momentos inolvidables\n\n// Gracias por compartir tu día especial.\n// Presiona [CELEBRAR] para recibir tu abrazo de cumpleaños ❤️`,
+      icon: '💻'
+    };
+
     const DEFAULT_QR_DATA = [
       {
         id: 1,
         type: 'gift',
         badge: 'Regalo Directo',
-        title: '¡Vale por tu Café o Postre Favorito!',
-        subtitle: 'Empezamos la búsqueda con mucha dulzura',
-        description: 'Presenta esta pantalla al anfitrión para reclamar tu regalo #1 sin ningún reto.',
-        icon: '☕'
+        title: 'Regalo Sorpresa!',
+        subtitle: 'Empezamos la búsqueda con mucho entusiasmo',
+        description: 'Reclama tú regalo sin ningún reto.',
+        icon: '🎁'
       },
       {
         id: 2,
         type: 'physical',
-        badge: 'Reto Físico Contrareloj',
+        badge: 'Reto Físico',
         title: '¡El Nudo Imposible!',
         subtitle: 'Prueba de habilidad a ciegas',
-        description: 'Debes desenredar por completo el cable de red UTP con los ojos vendados en menos de 1 minuto para liberar tu premio.',
-        duration: 60
+        description: 'Debes desenredar por completo el cable de red UTP con los ojos vendados en menos de 1 minuto.',
+        duration: 60,
+        icon: '🔌'
       },
       {
         id: 3,
         type: 'gift',
         badge: 'Regalo Directo',
-        title: '¡Kit de Skincare & Mascarilla Facial!',
+        title: 'Regalo Sorpresa!',
         subtitle: 'Un premio directo para consentirte',
-        description: '¡Qué suerte! No tienes que hacer ningún reto. Reclama el paquete #3 en la mesa de premios.',
-        icon: '✨'
+        description: '¡Qué suerte! No tienes que hacer ningún reto.',
+        icon: '🎀'
       },
       {
         id: 4,
         type: 'auction',
-        badge: 'Dinámica de Subasta / Engaño',
+        badge: 'Subasta / Engaño',
         title: '¿Instinto o Trampa?',
         subtitle: 'El Anfitrión tiene 2 sobres frente a ti',
         description: 'Uno contiene un regalo real increíble y el otro contiene... ¡un simple clip de oficina! Elige sabiamente antes de que se abra.',
-        optionA: 'Sobre Misterioso Rojo (A)',
-        optionB: 'Caja Pequeña Negra (B)'
+        optionA: 'Opción A',
+        optionB: 'Opción B',
+        icon: '✉️'
       },
       {
         id: 5,
         type: 'gift',
         badge: 'Regalo Directo',
-        title: '¡Dulces y Chocolates Importados!',
+        title: 'Regalo Sorpresa!',
         subtitle: 'Dosis de energía para seguir buscando',
-        description: '¡Felicidades! Abre la bolsa de regalo marcada con el número #5.',
-        icon: '🍫'
+        description: '¡Felicidades!',
+        icon: '☕'
       },
       {
         id: 6,
         type: 'physical',
-        badge: 'Reto Físico Contrareloj',
-        title: '¡Torre de Vasos Express!',
+        badge: 'Reto Físico',
+        title: '¡El Nudo Imposible!',
         subtitle: 'Pulso de cirujano bajo presión',
-        description: 'Arma una pirámide de 10 vasos plásticos y vuelve a apilarlos en una sola columna usando una sola mano en menos de 60 segundos.',
-        duration: 60
+        description: 'Debes desenredar por completo el cable de red UTP con solo una mano, sin usar boca, solo una mano, la que elijas en menos de 1 minuto.',
+        duration: 60,
+        icon: '🪢'
       },
       {
         id: 7,
         type: 'gift',
         badge: 'Regalo Directo',
-        title: '¡Accesorio Sorpresa de Moda!',
-        subtitle: 'Un toque de estilo para la cumpleañera',
-        description: 'Has encontrado el tesoro directo #7. ¡Reclama tu paquete envuelto!',
+        title: '¡Sorpresa!',
+        subtitle: 'Para la cumpleañera',
+        description: 'Has encontrado el tesoro directo. ¡Reclama tu paquete envuelto!',
         icon: '🕶️'
       },
       {
         id: 8,
         type: 'auction',
-        badge: 'Dinámica de Subasta / Engaño',
+        badge: 'Subasta / Engaño',
         title: 'El Dilema del Trueque',
         subtitle: 'Una opción es broma, la otra es real',
-        description: 'Frente a ti hay dos bolsas cerradas: en una hay una piedra decorativa de jardín y en la otra un regalo de verdad. ¿Cuál eliges?',
-        optionA: 'Bolsa Dorada (Opción A)',
-        optionB: 'Bolsa Plateada (Opción B)'
+        description: 'Frente a ti hay dos bolsas cerradas: en una hay una piedra decorativa y en la otra un regalo de verdad. ¿Cuál eliges?',
+        optionA: 'Opción A',
+        optionB: 'Opción B',
+        icon: '🛍️'
       },
       {
         id: 9,
         type: 'gift',
         badge: 'Regalo Directo',
-        title: '¡Vela Aromática Relajante!',
+        title: 'Regalo Sorpresa!',
         subtitle: 'Aroma especial de cumpleaños',
-        description: '¡Sin trampas ni retos! Reclama el regalo físico marcado con el #9.',
-        icon: '🕯️'
+        description: '¡Sin trampas ni retos! Reclama el regalo.',
+        icon: '🌸'
       },
       {
         id: 10,
         type: 'dance',
-        badge: 'Reto de Baile en Sala',
+        badge: 'Reto de Baile',
         title: '¡Pista de Baile Activada!',
         subtitle: 'Sube el volumen de la música',
         description: 'Debes imitar al 100% la coreografía que pondrá el DJ/Anfitrión en la sala durante al menos 30 segundos seguidos con toda la actitud.',
-        songHint: 'Coreografía TikTok / Pop Clásico de Fiesta'
+        songHint: 'Coreografía en la Sala',
+        icon: '💃'
       },
       {
         id: 11,
         type: 'gift',
         badge: 'Regalo Directo',
-        title: '¡Taza / Termo Personalizado!',
-        subtitle: 'Para tus bebidas favoritas todo el año',
+        title: 'Regalo Sorpresa!',
+        subtitle: 'Eso fue sencillo',
         description: '¡Premio instantáneo! Pide tu caja número #11 al organizador.',
-        icon: '🧋'
+        icon: '📦'
       },
       {
         id: 12,
         type: 'physical',
-        badge: 'Reto Físico Contrareloj',
+        badge: 'Reto Físico',
         title: '¡Pesca con Palillos Chinos!',
         subtitle: 'Concentración extrema en 60 segundos',
-        description: 'Traslada 8 gomitas o dulces de un plato a otro usando únicamente palillos chinos antes de que el reloj llegue a cero.',
-        duration: 60
+        description: 'Traslada los objetos de un sitio a otro usando únicamente palillos chinos antes de que el reloj llegue a cero.',
+        duration: 60,
+        icon: '🥢'
       },
       {
         id: 13,
         type: 'gift',
         badge: 'Regalo Directo',
-        title: '¡Vale por Cena / Salida Especial!',
+        title: 'Regalo Sorpresa!',
         subtitle: 'El número 13 hoy es de buena suerte',
-        description: '¡Ganaste una invitación directa! Reclama tu tarjeta física #13.',
-        icon: '🍕'
+        description: '¡Premio directo desbloqueado! Recoge tu regalo.',
+        icon: '🍀'
       },
       {
         id: 14,
         type: 'maneki',
-        badge: '✨ PREMIO ESPECIAL DORADO #14 ✨',
+        badge: '✨ Especial #14 ✨',
         title: '¡Felicidades, ganaste un gatito Maneki!',
         subtitle: 'Amuleto de la fortuna, prosperidad y buena vibra',
         description: 'Has desbloqueado el tesoro más especial de la búsqueda. ¡El Maneki-neko dorado mueve su patita para traerte suerte todo este nuevo año de vida!',
@@ -383,100 +608,302 @@
       {
         id: 15,
         type: 'auction',
-        badge: 'Dinámica de Subasta / Engaño',
+        badge: 'Subasta / Engaño',
         title: 'La Caja del Misterio',
         subtitle: '¿Te quedas con la grande o la pequeña?',
-        description: 'Las apariencias engañan: una contiene un rollo de papel higiénico de broma y la otra un regalo genial. ¡Toma tu decisión!',
-        optionA: 'Caja Gigante Liviana (A)',
-        optionB: 'Caja Mini Pesada (B)'
+        description: 'Las apariencias engañan: ¡Toma tu decisión!',
+        optionA: 'Opción A',
+        optionB: 'Opción B',
+        icon: '📦'
       },
       {
         id: 16,
         type: 'dance',
-        badge: 'Reto de Baile en Sala',
+        badge: 'Reto de Baile',
         title: '¡Duelo de Ritmo & Espejo!',
         subtitle: 'Elige a un invitado para bailar contigo',
         description: 'Imita la coreografía que suena en la sala junto a un invitado elegido al azar. ¡Si el público aplaude, el premio #16 es tuyo!',
-        songHint: 'Hit Bailable Sorpresa del Anfitrión'
+        songHint: 'Duelo de Baile con Invitado',
+        icon: '🪩'
       },
       {
         id: 17,
         type: 'gift',
         badge: 'Regalo Directo',
-        title: '¡Libreta / Planner Creativo + Stickers!',
-        subtitle: 'Para anotar todas tus metas de este nuevo año',
-        description: '¡Premio directo desbloqueado! Recoge tu regalo #17.',
-        icon: '📓'
+        title: 'Regalo Sorpresa!',
+        subtitle: 'Que nervios',
+        description: '¡Premio directo desbloqueado! Recoge tu regalo.',
+        icon: '🎉'
       },
       {
         id: 18,
         type: 'physical',
-        badge: 'Reto Físico Contrareloj',
+        badge: 'Reto Físico',
         title: '¡Adivina los 3 Objetos a Ciegas!',
         subtitle: 'Sentido del tacto al límite',
         description: 'Con los ojos vendados, debes identificar correctamente 3 objetos raros dentro de la bolsa misteriosa en menos de 1 minuto.',
-        duration: 60
+        duration: 60,
+        icon: '🕶️'
       },
       {
         id: 19,
         type: 'gift',
         badge: 'Regalo Directo',
-        title: '¡Gift Card / Sobre Sorpresa!',
+        title: 'Regalo Sorpresa!',
         subtitle: 'Penúltimo código de la aventura',
-        description: '¡Ganaste un premio directo sin sudar! Reclama el sobre #19.',
-        icon: '💳'
+        description: '¡Ganaste un premio directo sin sudar!.',
+        icon: '💎'
       },
       {
         id: 20,
         type: 'auction',
-        badge: 'Gran Subasta Final (#20)',
+        badge: 'Subasta / Engaño',
         title: '¡El Último Todo o Nada!',
         subtitle: 'Decisión final de la Búsqueda del Tesoro',
-        description: 'Quedan dos cofres finales: uno tiene una cuchara de plástico y el otro el Gran Premio #20. ¿Cuál abrimos primero?',
-        optionA: 'Cofre Misterioso Izquierdo (A)',
-        optionB: 'Cofre Misterioso Derecho (B)'
+        description: 'Uno tiene una cuchara de plástico y el otro el Gran Premio. ¿Cuál abrimos primero?',
+        optionA: 'Opción A',
+        optionB: 'Opción B',
+        icon: '🏆'
       }
     ];
+    /*__END_DEFAULT_DATA__*/
 
-    // Estado de la aplicación
+    // Estado general
+    const STORAGE_KEY = 'tesoro_qr_data_v4';
+    const STORAGE_RPG_KEY = 'tesoro_qr_rpg_v4';
+    const STORAGE_COMPLETED_KEY = 'tesoro_qr_completed_v4';
     let qrList = loadQRData();
+    let birthdayRPGConfig = loadBirthdayRPGConfig();
+    let completedIds = loadCompletedIds();
     let currentQRId = 1;
+    let isFinalBirthdayRoute = false;
+    let isBubblesHubRoute = false;
+    let hubViewMode = 'floating'; // 'floating' (solo burbujas pendientes) | 'grid' (tablero completo con checks)
     let timerInterval = null;
     let timerSeconds = 60;
     let timerRunning = false;
     let soundEnabled = true;
     let audioCtx = null;
+    let editingIconIndex = null;
 
-    // Cargar o inicializar datos personalizados desde localStorage
+    // Variables para Máquina de Escribir y Música RPG 8-bit
+    let typewriterInterval = null;
+    let rpgMusicInterval = null;
+    let rpgMusicPlaying = false;
+    let rpgNoteIndex = 0;
+
+    // Variables para desbloqueo secreto del Organizador (5 toques)
+    let secretTapCount = 0;
+    let secretTapTimer = null;
+
+    function handleSecretTap() {
+      secretTapCount++;
+      clearTimeout(secretTapTimer);
+      secretTapTimer = setTimeout(() => { secretTapCount = 0; }, 1800);
+      if (secretTapCount >= 5) {
+        secretTapCount = 0;
+        unlockOrganizerButton();
+        toggleOrganizerModal(true);
+      }
+    }
+
+    function unlockOrganizerButton() {
+      const btn = document.getElementById('btn-organizer- trigger');
+      if (btn) {
+        btn.classList.remove('hidden');
+        btn.classList.add('flex');
+      }
+    }
+
+    // Atajo de teclado en PC: Ctrl + Shift + O
+    window.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.shiftKey && (e.key === 'O' || e.key === 'o')) {
+        e.preventDefault();
+        unlockOrganizerButton();
+        toggleOrganizerModal(true);
+      }
+    });
+
+    // Codificación y decodificación UTF-8 a Base64 URL-Safe para incrustar datos en el QR
+    function encodePayload(item) {
+      try {
+        const minimal = {
+          i: item.id,
+          y: item.type,
+          b: item.badge,
+          t: item.title,
+          s: item.subtitle,
+          d: item.description,
+          c: item.icon || '🎁',
+          u: item.duration || 60,
+          a: item.optionA || 'Opción A',
+          o: item.optionB || 'Opción B'
+        };
+        const json = JSON.stringify(minimal);
+        return btoa(encodeURIComponent(json));
+      } catch (e) {
+        return '';
+      }
+    }
+
+    function decodePayload(encoded) {
+      try {
+        const json = decodeURIComponent(atob(encoded));
+        const m = JSON.parse(json);
+        return {
+          id: m.i || 1,
+          type: m.y || 'gift',
+          badge: m.b || 'Sorpresa',
+          title: m.t || 'Regalo Sorpresa!',
+          subtitle: m.s || '',
+          description: m.d || '',
+          icon: m.c || '🎁',
+          duration: m.u || 60,
+          optionA: m.a || 'Opción A',
+          optionB: m.o || 'Opción B'
+        };
+      } catch (e) {
+        return null;
+      }
+    }
+
     function loadQRData() {
       try {
-        const saved = localStorage.getItem('tesoro_qr_data_v1');
+        const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length === 20) return parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
         }
-      } catch (e) {
-        console.warn('Usando configuración por defecto');
-      }
+      } catch (e) {}
       return JSON.parse(JSON.stringify(DEFAULT_QR_DATA));
+    }
+
+    function loadBirthdayRPGConfig() {
+      try {
+        const saved = localStorage.getItem(STORAGE_RPG_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && parsed.title) return parsed;
+        }
+      } catch (e) {}
+      return JSON.parse(JSON.stringify(DEFAULT_BIRTHDAY_RPG));
+    }
+
+    function loadCompletedIds() {
+      try {
+        const saved = localStorage.getItem(STORAGE_COMPLETED_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      } catch (e) {}
+      return [];
+    }
+
+    function saveCompletedIds() {
+      try {
+        localStorage.setItem(STORAGE_COMPLETED_KEY, JSON.stringify(completedIds));
+      } catch (e) {}
+      updateHeaderProgressPill();
+    }
+
+    function isQRCompleted(id) {
+      return completedIds.includes(Number(id));
+    }
+
+    function updateHeaderProgressPill() {
+      const pill = document.getElementById('header-progress-pill');
+      if (!pill) return;
+      const validIds = qrList.map(q => Number(q.id));
+      const doneCount = completedIds.filter(id => validIds.includes(Number(id))).length;
+      pill.textContent = `${doneCount}/${qrList.length}`;
+    }
+
+    // Marca el QR actual como completado y avanza a la Zona de Burbujas (o al Mensaje Final si ya están todos)
+    function completeCurrentAndContinue(id) {
+      const numId = Number(id);
+      if (!completedIds.includes(numId)) {
+        completedIds.push(numId);
+        saveCompletedIds();
+      }
+      playSoundEffect('fanfare');
+      launchPartyConfetti();
+
+      // Verificar si ya se completaron todos los retos/premios de la lista
+      const allCompleted = qrList.every(item => completedIds.includes(Number(item.id)));
+      setTimeout(() => {
+        if (allCompleted) {
+          goToFinalBirthday();
+        } else {
+          goToBubblesHub();
+        }
+      }, 420);
+    }
+
+    function toggleQRCompletedStatus(id) {
+      const numId = Number(id);
+      if (completedIds.includes(numId)) {
+        completedIds = completedIds.filter(x => x !== numId);
+      } else {
+        completedIds.push(numId);
+      }
+      saveCompletedIds();
+      renderCurrentScreen();
+    }
+
+    function resetCompletedProgress() {
+      completedIds = [];
+      saveCompletedIds();
+      renderEditorList();
+      renderOrganizerGrid();
+      renderCurrentScreen();
     }
 
     function saveQRData() {
       try {
-        localStorage.setItem('tesoro_qr_data_v1', JSON.stringify(qrList));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(qrList));
+        localStorage.setItem(STORAGE_RPG_KEY, JSON.stringify(birthdayRPGConfig));
       } catch (e) {}
+      updateCounters();
+      updateHeaderProgressPill();
+    }
+
+    function updateBirthdayRPGConfig(field, value) {
+      birthdayRPGConfig[field] = value;
+      saveQRData();
+      if (isFinalBirthdayRoute) {
+        renderCurrentScreen();
+      }
+    }
+
+    function updateCounters() {
+      const el = document.getElementById('count-tab-editor');
+      if (el) el.textContent = qrList.length;
     }
 
     function resetDefaultData() {
       qrList = JSON.parse(JSON.stringify(DEFAULT_QR_DATA));
+      birthdayRPGConfig = JSON.parse(JSON.stringify(DEFAULT_BIRTHDAY_RPG));
       saveQRData();
+      syncRPGConfigInputs();
       renderEditorList();
       renderOrganizerGrid();
       renderCurrentScreen();
     }
 
     /*************************************************************************
-     * 2. SINTETIZADOR DE SONIDO WEB AUDIO (Sin archivos MP3 externos)
+     * 3. RENDERIZADO DE ÍCONO O IMAGEN PERSONALIZADA
+     *************************************************************************/
+    function renderVisualIcon(iconStr, sizeClass = 'text-5xl', imgClass = 'w-16 h-16') {
+      const val = (iconStr || '🎁').trim();
+      if (val.startsWith('http://') || val.startsWith('https://') || val.startsWith('data:image')) {
+        return `<img src="${val}" alt="Icono" class="${imgClass} object-contain rounded-2xl mx-auto" onerror="this.outerHTML='<span class=\\'${sizeClass}\\'>🎁</span>'" />`;
+      }
+      return `<span class="${sizeClass} select-none leading-none">${val}</span>`;
+    }
+
+    /*************************************************************************
+     * 4. SINTETIZADOR DE SONIDO WEB AUDIO
      *************************************************************************/
     function initAudio() {
       if (!audioCtx) {
@@ -545,12 +972,125 @@
           gain.connect(audioCtx.destination);
           osc.start(now);
           osc.stop(now + 0.4);
+        } else if (type === 'rpg_blip') {
+          // Sonido clásico de texto RPG retro al escribir cada letra
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'square';
+          const baseFreq = 540 + (Math.random() * 140);
+          osc.frequency.setValueAtTime(baseFreq, now);
+          gain.gain.setValueAtTime(0.035, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now);
+          osc.stop(now + 0.04);
         }
       } catch (e) {}
     }
 
+    /*************************************************************************
+     * MELODÍA DE FONDO ESTILO VIDEOJUEGO RPG 8-BIT (Web Audio Chiptune)
+     *************************************************************************/
+    const RPG_BIRTHDAY_MELODY = [
+      // Melodía "Happy Birthday" + Arpegio RPG de Victoria en 8-bits
+      { f: 261.63, d: 0.22 }, { f: 261.63, d: 0.18 }, { f: 293.66, d: 0.38 }, { f: 261.63, d: 0.38 }, { f: 349.23, d: 0.38 }, { f: 329.63, d: 0.65 },
+      { f: 261.63, d: 0.22 }, { f: 261.63, d: 0.18 }, { f: 293.66, d: 0.38 }, { f: 261.63, d: 0.38 }, { f: 392.00, d: 0.38 }, { f: 349.23, d: 0.65 },
+      { f: 261.63, d: 0.22 }, { f: 261.63, d: 0.18 }, { f: 523.25, d: 0.38 }, { f: 440.00, d: 0.38 }, { f: 349.23, d: 0.38 }, { f: 329.63, d: 0.38 }, { f: 293.66, d: 0.55 },
+      { f: 466.16, d: 0.22 }, { f: 466.16, d: 0.18 }, { f: 440.00, d: 0.38 }, { f: 349.23, d: 0.38 }, { f: 392.00, d: 0.38 }, { f: 349.23, d: 0.70 },
+      // Puente RPG Aventura
+      { f: 523.25, d: 0.18 }, { f: 659.25, d: 0.18 }, { f: 783.99, d: 0.18 }, { f: 1046.50, d: 0.45 }
+    ];
+
+    function startRPGBackgroundMusic() {
+      stopRPGBackgroundMusic();
+      if (!soundEnabled) return;
+      initAudio();
+      rpgMusicPlaying = true;
+      rpgNoteIndex = 0;
+      updateRPGMusicButtonUI();
+
+      const playNextStep = () => {
+        if (!rpgMusicPlaying || !soundEnabled) return;
+        try {
+          initAudio();
+          if (audioCtx) {
+            const note = RPG_BIRTHDAY_MELODY[rpgNoteIndex % RPG_BIRTHDAY_MELODY.length];
+            const now = audioCtx.currentTime;
+
+            // Canal Lead 8-bit (Square wave)
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(note.f, now);
+            gain.gain.setValueAtTime(0.055, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + note.d * 0.92);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + note.d);
+
+            // Canal Bajo RPG (Triangle wave una octava abajo)
+            const bass = audioCtx.createOscillator();
+            const bassGain = audioCtx.createGain();
+            bass.type = 'triangle';
+            bass.frequency.setValueAtTime(note.f / 2, now);
+            bassGain.gain.setValueAtTime(0.04, now);
+            bassGain.gain.exponentialRampToValueAtTime(0.001, now + note.d * 0.9);
+            bass.connect(bassGain);
+            bassGain.connect(audioCtx.destination);
+            bass.start(now);
+            bass.stop(now + note.d);
+
+            rpgNoteIndex++;
+            rpgMusicInterval = setTimeout(playNextStep, note.d * 1000);
+          }
+        } catch (e) {}
+      };
+
+      playNextStep();
+    }
+
+    function stopRPGBackgroundMusic() {
+      rpgMusicPlaying = false;
+      if (rpgMusicInterval) {
+        clearTimeout(rpgMusicInterval);
+        rpgMusicInterval = null;
+      }
+      updateRPGMusicButtonUI();
+    }
+
+    function toggleRPGBackgroundMusic() {
+      if (rpgMusicPlaying) {
+        stopRPGBackgroundMusic();
+      } else {
+        soundEnabled = true;
+        startRPGBackgroundMusic();
+      }
+    }
+
+    function updateRPGMusicButtonUI() {
+      const btn = document.getElementById('btn-rpg-bgm');
+      if (!btn) return;
+      if (rpgMusicPlaying) {
+        btn.innerHTML = '<span>🔊 Música RPG 8-Bit: SONANDO (Pausar)</span>';
+        btn.className = 'w-full py-2.5 px-3 rounded-xl bg-emerald-500/25 border border-emerald-400 text-emerald-200 font-coder font-bold text-xs flex items-center justify-center gap-2 transition active:scale-95';
+      } else {
+        btn.innerHTML = '<span>🎵 Toca aquí para Activar Música RPG 8-Bit</span>';
+        btn.className = 'w-full py-2.5 px-3 rounded-xl bg-amber-500/20 border border-amber-400/60 text-amber-200 font-coder font-bold text-xs flex items-center justify-center gap-2 transition active:scale-95 animate-pulse';
+      }
+    }
+
+    function stopTypewriterEffect() {
+      if (typewriterInterval) {
+        clearInterval(typewriterInterval);
+        typewriterInterval = null;
+      }
+    }
+
     function toggleSound() {
       soundEnabled = !soundEnabled;
+      if (!soundEnabled) stopRPGBackgroundMusic();
       const btn = document.getElementById('btn-sound-toggle');
       btn.innerHTML = soundEnabled
         ? '<i data-lucide="volume-2" class="w-4 h-4 text-pink-200"></i>'
@@ -559,61 +1099,276 @@
     }
 
     /*************************************************************************
-     * 3. ENRUTADOR DE URL (Soporta #qr-1 a #qr-20, ?qr=14 o /qr-14)
+     * 5. ENRUTADOR INTELIGENTE (Lee #qr-X, #cumple y datos incrustados ?d=...)
      *************************************************************************/
+    let embeddedOverrideItem = null;
+
     function parseRouteFromURL() {
+      embeddedOverrideItem = null;
+      isFinalBirthdayRoute = false;
+      isBubblesHubRoute = false;
       const hash = window.location.hash || '';
       const search = window.location.search || '';
-      const path = window.location.pathname || '';
 
-      // 1. Buscar patrón #qr-14 o #14
+      // Si entra con #admin o ?admin=1, desbloquea y abre el panel del organizador
+      if (hash.toLowerCase().includes('admin') || search.toLowerCase().includes('admin')) {
+        unlockOrganizerButton();
+        setTimeout(() => toggleOrganizerModal(true), 150);
+      }
+
+      // Verificar si el QR trae payload incrustado (?d=...)
+      if (hash.includes('?d=')) {
+        const parts = hash.split('?d=');
+        const decoded = decodePayload(parts[1]);
+        if (decoded) {
+          embeddedOverrideItem = decoded;
+          if (decoded.type === 'rpg_birthday') {
+            isFinalBirthdayRoute = true;
+          }
+          return decoded.id;
+        }
+      }
+
+      // Ruta de la Zona de Burbujas Flotantes (#burbujas o #hub o si entra sin hash a la raíz)
+      if (hash.toLowerCase().includes('burbujas') || hash.toLowerCase().includes('hub') || hash === '' || hash === '#') {
+        isBubblesHubRoute = true;
+        return 'HUB';
+      }
+
+      // Ruta especial para el Mensaje Final de Cumpleaños (#cumple o #final)
+      if (hash.toLowerCase().includes('cumple') || hash.toLowerCase().includes('final')) {
+        isFinalBirthdayRoute = true;
+        return 'FINAL';
+      }
+
       let match = hash.match(/qr-(\d+)/i) || hash.match(/#(\d+)/);
       if (!match) {
-        // 2. Buscar ?qr=14 o ?id=14
         const params = new URLSearchParams(search);
         const qVal = params.get('qr') || params.get('id');
         if (qVal) match = [null, qVal];
       }
-      if (!match) {
-        // 3. Buscar /qr-14 en el pathname
-        match = path.match(/qr-(\d+)/i);
-      }
 
       if (match && match[1]) {
         const num = parseInt(match[1], 10);
-        if (num >= 1 && num <= 20) return num;
+        if (num >= 1) return num;
       }
-      return 1; // Por defecto QR #1
+      isBubblesHubRoute = true;
+      return 'HUB';
     }
 
     function goToQR(id) {
-      if (id < 1) id = 20;
-      if (id > 20) id = 1;
+      isFinalBirthdayRoute = false;
+      isBubblesHubRoute = false;
       window.location.hash = `qr-${id}`;
     }
 
-    function navigateRelative(delta) {
-      goToQR(currentQRId + delta);
+    function goToBubblesHub() {
+      isFinalBirthdayRoute = false;
+      isBubblesHubRoute = true;
+      window.location.hash = 'burbujas';
+    }
+
+    function goToFinalBirthday() {
+      isBubblesHubRoute = false;
+      isFinalBirthdayRoute = true;
+      window.location.hash = 'cumple';
+    }
+
+    function switchHubViewMode(mode) {
+      hubViewMode = mode;
+      renderCurrentScreen();
     }
 
     window.addEventListener('hashchange', () => {
       stopActiveTimer();
+      stopTypewriterEffect();
+      stopRPGBackgroundMusic();
       currentQRId = parseRouteFromURL();
       renderCurrentScreen();
     });
 
     /*************************************************************************
-     * 4. RENDERIZADO DE LAS 5 EXPERIENCIAS INTERACTIVAS
+     * 6. RENDERIZADO DE LAS PANTALLAS INTERACTIVAS + ZONA DE BURBUJAS
      *************************************************************************/
+    function getActiveQRItem() {
+      if (embeddedOverrideItem) {
+        return embeddedOverrideItem;
+      }
+      if (isFinalBirthdayRoute) {
+        return {
+          id: 'FINAL',
+          type: 'rpg_birthday',
+          badge: '💻 FINAL QUEST',
+          title: birthdayRPGConfig.title,
+          subtitle: birthdayRPGConfig.subtitle,
+          description: birthdayRPGConfig.message,
+          icon: birthdayRPGConfig.icon || '💻'
+        };
+      }
+      return qrList.find(q => q.id === currentQRId) || qrList[0] || DEFAULT_QR_DATA[0];
+    }
+
+    // Bloque inferior "Sigamos" con Check de completado para cada QR
+    function buildContinueFooter(item) {
+      const done = isQRCompleted(item.id);
+      const validIds = qrList.map(q => Number(q.id));
+      const doneCount = completedIds.filter(id => validIds.includes(Number(id))).length;
+      const remaining = Math.max(0, qrList.length - doneCount);
+
+      return `
+        <div class="mt-4 pt-4 border-t border-white/15 space-y-2.5">
+          <button onclick="completeCurrentAndContinue(${item.id})" class="w-full py-4 px-5 rounded-2xl bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 hover:from-emerald-300 hover:to-cyan-300 text-slate-950 font-extrabold text-base shadow-xl shadow-emerald-500/25 transition active:scale-95 flex items-center justify-center gap-2">
+            <span>${done ? '✅ ¡Ya Cumplido! Sigamos ➔' : '✅ ¡Cumplido! Sigamos ➔'}</span>
+          </button>
+
+          <div class="flex items-center justify-between px-1 text-[11px] text-slate-300">
+            <button onclick="toggleQRCompletedStatus(${item.id})" class="inline-flex items-center gap-1.5 text-xs font-bold ${done ? 'text-emerald-300' : 'text-slate-400 hover:text-white'} transition">
+              <span class="w-4 h-4 rounded border ${done ? 'bg-emerald-500 border-emerald-400 text-slate-950' : 'border-white/30'} flex items-center justify-center text-[10px] font-extrabold">${done ? '✓' : ''}</span>
+              <span>${done ? 'Completado' : 'Marcar check manualmente'}</span>
+            </button>
+            <button onclick="goToBubblesHub()" class="text-cyan-300 hover:underline font-bold">
+              🫧 Ver burbujas (${remaining} pendientes)
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    /* PANTALLA ESPECIAL: ZONA DE BURBUJAS FLOTANTES Y TABLERO DE CHECKS */
+    function buildBubblesHubScreen() {
+      const validIds = qrList.map(q => Number(q.id));
+      const doneCount = completedIds.filter(id => validIds.includes(Number(id))).length;
+      const totalCount = qrList.length;
+      const progressPct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+      const pendingItems = qrList.filter(item => !isQRCompleted(item.id));
+      const allCompleted = pendingItems.length === 0 && totalCount > 0;
+
+      // Colores vibrantes para las burbujas flotantes
+      const bubbleGradients = [
+        'from-pink-500 via-rose-500 to-amber-400 border-pink-300/70 shadow-pink-500/30',
+        'from-cyan-400 via-teal-500 to-emerald-400 border-cyan-200/70 shadow-cyan-500/30',
+        'from-purple-500 via-indigo-500 to-pink-500 border-purple-300/70 shadow-purple-500/30',
+        'from-amber-400 via-orange-500 to-rose-500 border-amber-200/70 shadow-amber-500/30',
+        'from-emerald-400 via-lime-500 to-teal-500 border-emerald-200/70 shadow-emerald-500/30'
+      ];
+
+      return `
+        <div class="w-full bg-gradient-to-b from-slate-900/95 via-indigo-950/50 to-slate-950 border border-white/15 rounded-3xl p-5 text-center shadow-2xl relative overflow-hidden space-y-4">
+          <!-- Cabecera y Barra de Progreso de los 20 Checks -->
+          <div class="space-y-2">
+            <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 text-[11px] font-extrabold uppercase tracking-wider">
+              <span>🫧</span> Elige tu Próximo Número o Escanea un QR
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-white leading-tight">
+              Búsqueda del Tesoro
+            </h1>
+
+            <!-- Barra de Progreso hacia el Mensaje Final -->
+            <div class="bg-slate-950/90 border border-white/10 rounded-2xl p-3 space-y-1.5">
+              <div class="flex items-center justify-between text-xs font-extrabold">
+                <span class="text-emerald-300">✅ Completados: ${doneCount} de ${totalCount}</span>
+                <span class="text-amber-300">${progressPct}%</span>
+              </div>
+              <div class="w-full h-3 bg-slate-800 rounded-full overflow-hidden border border-white/10">
+                <div class="h-full bg-gradient-to-r from-pink-500 via-amber-400 to-emerald-400 transition-all duration-500" style="width: ${progressPct}%"></div>
+              </div>
+              <p class="text-[11px] text-slate-400">
+                ${allCompleted
+                  ? '🎉 ¡Completaste los 20! El Mensaje Final de Cumpleaños está desbloqueado.'
+                  : `Faltan <strong class="text-white">${pendingItems.length}</strong> burbujas por descubrir para desbloquear la sorpresa final.`}
+              </p>
+            </div>
+          </div>
+
+          <!-- Selector de las 2 Vistas (Burbujas Flotantes vs Tablero con Checks) -->
+          <div class="grid grid-cols-2 gap-2 bg-slate-950/80 p-1.5 rounded-2xl border border-white/10">
+            <button onclick="switchHubViewMode('floating')" class="py-2 px-3 rounded-xl text-xs font-extrabold transition ${hubViewMode === 'floating' ? 'bg-gradient-to-r from-pink-500 to-amber-500 text-slate-950 shadow' : 'text-slate-300 hover:text-white'}">
+              🫧 Burbujas Flotantes (${pendingItems.length})
+            </button>
+            <button onclick="switchHubViewMode('grid')" class="py-2 px-3 rounded-xl text-xs font-extrabold transition ${hubViewMode === 'grid' ? 'bg-gradient-to-r from-cyan-400 to-emerald-400 text-slate-950 shadow' : 'text-slate-300 hover:text-white'}">
+              📋 Tablero de Checks (${doneCount}/${totalCount})
+            </button>
+          </div>
+
+          <!-- VISTA 1: ZONA DE BURBUJAS FLOTANTES (Las cumplidas ya no salen aquí) -->
+          ${hubViewMode === 'floating' ? `
+            <div class="min-h-[260px] py-4 px-2 rounded-2xl bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-900/30 via-slate-950/60 to-slate-950 border border-white/10 flex flex-wrap items-center justify-center gap-3.5 relative">
+              ${pendingItems.length > 0 ? pendingItems.map((item, idx) => {
+                const grad = bubbleGradients[item.id % bubbleGradients.length];
+                const delay = ((idx * 0.27) % 2.4).toFixed(2);
+                const sizeCls = item.id === 14 ? 'w-20 h-20 text-2xl ring-4 ring-amber-300/60' : 'w-16 h-16 text-xl';
+                return `
+                  <button onclick="goToQR(${item.id})" style="animation-delay: ${delay}s" class="floating-bubble ${sizeCls} rounded-full bg-gradient-to-br ${grad} border-2 shadow-lg flex flex-col items-center justify-center text-white font-extrabold transition transform active:scale-90 hover:scale-110 relative group">
+                    <span class="drop-shadow">#${item.id}</span>
+                    <span class="text-[9px] font-bold uppercase tracking-tighter opacity-90">Abrir</span>
+                  </button>
+                `;
+              }).join('') : `
+                <div class="py-8 px-4 text-center space-y-3">
+                  <div class="text-6xl animate-bounce">🏆</div>
+                  <h2 class="text-xl font-extrabold text-emerald-300">¡Todas las burbujas fueron completadas!</h2>
+                  <p class="text-xs text-slate-300 max-w-xs mx-auto">Has superado los ${totalCount} retos y regalos de tu cumpleaños.</p>
+                </div>
+              `}
+            </div>
+          ` : `
+            <!-- VISTA 2: TABLERO COMPLETO CON CHECKS -->
+            <div class="grid grid-cols-4 gap-2.5 py-2">
+              ${qrList.map(item => {
+                const done = isQRCompleted(item.id);
+                return `
+                  <button onclick="goToQR(${item.id})" class="p-2.5 rounded-2xl border text-center transition active:scale-95 flex flex-col items-center justify-center relative ${done ? 'bg-emerald-950/50 border-emerald-400/60 text-emerald-200' : 'bg-slate-900/90 border-white/15 text-white hover:border-pink-400'}">
+                    <span class="absolute top-1.5 right-1.5 text-[10px]">${done ? '✅' : '⚪'}</span>
+                    <span class="text-lg font-extrabold">#${item.id}</span>
+                    <span class="text-[9px] font-bold truncate w-full opacity-80">${done ? 'Cumplido' : 'Pendiente'}</span>
+                  </button>
+                `;
+              }).join('')}
+            </div>
+          `}
+
+          <!-- Botón para ir al Mensaje Final (Destacado al completar los 20) -->
+          <div class="pt-1">
+            ${allCompleted ? `
+              <button onclick="goToFinalBirthday()" class="w-full py-4 px-5 rounded-2xl bg-gradient-to-r from-emerald-400 via-lime-400 to-amber-300 text-slate-950 font-coder font-extrabold text-sm shadow-xl shadow-emerald-500/30 animate-pulse transition active:scale-95">
+                💻🎉 ¡VER MENSAJE FINAL DE FELIZ CUMPLEAÑOS! ➔
+              </button>
+            ` : `
+              <button onclick="goToFinalBirthday()" class="w-full py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-emerald-300 font-coder font-bold text-[11px] transition">
+                🔒 Mensaje Final de Cumpleaños (${doneCount}/${totalCount} completados • Toca para adelantar)
+              </button>
+            `}
+          </div>
+        </div>
+      `;
+    }
+
     function renderCurrentScreen() {
       stopActiveTimer();
-      const item = qrList.find(q => q.id === currentQRId) || qrList[0];
-      document.getElementById('qr-badge-number').textContent = `#${item.id}`;
+      stopTypewriterEffect();
+      stopRPGBackgroundMusic();
+      updateHeaderProgressPill();
 
       const stage = document.getElementById('app-stage');
 
-      // Selección de plantilla según tipo de QR
-      if (item.type === 'maneki') {
+      if (isBubblesHubRoute) {
+        document.getElementById('qr-badge-number').textContent = '🫧 HUB';
+        stage.innerHTML = buildBubblesHubScreen();
+        lucide.createIcons();
+        return;
+      }
+
+      const item = getActiveQRItem();
+      document.getElementById('qr-badge-number').textContent = item.id === 'FINAL' ? '🎂 RPG' : `#${item.id}`;
+
+      if (item.type === 'rpg_birthday') {
+        stage.innerHTML = buildRPGBirthdayScreen(item);
+        setTimeout(() => {
+          startTypewriterAnimation(item.description || birthdayRPGConfig.message);
+          startRPGBackgroundMusic();
+          launchPartyConfetti();
+        }, 200);
+      } else if (item.type === 'maneki') {
         stage.innerHTML = buildManekiScreen(item);
         setTimeout(() => launchGoldenConfetti(), 250);
         playSoundEffect('fanfare');
@@ -631,23 +1386,21 @@
       lucide.createIcons();
     }
 
-    /* ---------------------------------------------------------------------
-       PLANTILLA A: REGALO DIRECTO (Caja interactiva que se abre con confeti)
-       --------------------------------------------------------------------- */
+    /* PLANTILLA A: REGALO DIRECTO */
     function buildGiftScreen(item) {
       return `
         <div class="w-full bg-gradient-to-b from-pink-600/25 via-rose-900/30 to-slate-900/90 border border-pink-500/30 rounded-3xl p-6 text-center shadow-2xl shadow-pink-950/50 backdrop-blur-xl relative overflow-hidden">
           <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-pink-500/20 border border-pink-400/30 text-pink-200 text-xs font-bold uppercase tracking-wider mb-4">
-            <span>🎁</span> ${item.badge} • QR #${item.id}
+            <span>🎁</span> ${item.badge || 'Regalo Directo'} • QR #${item.id}
           </div>
 
           <!-- Estado 1: Caja Cerrada -->
           <div id="gift-closed-box" class="py-6 flex flex-col items-center">
             <h1 class="text-2xl sm:text-3xl font-extrabold text-white mb-2">
-              ¡Encontraste un Regalo Directo!
+              ¡Encontraste un Regalo!
             </h1>
             <p class="text-sm text-pink-200/80 mb-8 max-w-xs">
-              Toca la caja mágica para romper el lazo y descubrir qué ganaste.
+              Toca la caja mágica para romper el lazo y descubrir tu sorpresa.
             </p>
 
             <button onclick="openDirectGift()" class="group relative w-44 h-44 flex items-center justify-center rounded-full bg-gradient-to-tr from-pink-500/30 to-amber-400/20 border-2 border-pink-400/40 shadow-xl active:scale-90 transition cursor-pointer">
@@ -658,10 +1411,10 @@
             </button>
           </div>
 
-          <!-- Estado 2: Premio Revelado -->
-          <div id="gift-opened-card" class="hidden py-4 flex-col items-center animate-fade-in">
-            <div class="w-24 h-24 rounded-3xl bg-gradient-to-br from-amber-400 to-pink-500 flex items-center justify-center text-5xl shadow-lg shadow-pink-500/30 mb-4 mx-auto">
-              ${item.icon || '🎉'}
+          <!-- Estado 2: Premio Revelado con su Ícono / Imagen Customizable -->
+          <div id="gift-opened-card" class="hidden py-4 flex-col items-center">
+            <div class="w-28 h-28 rounded-3xl bg-gradient-to-br from-amber-400/30 via-pink-500/30 to-rose-500/30 border-2 border-amber-300/50 flex items-center justify-center shadow-xl shadow-pink-500/20 mb-4 mx-auto animate-float-icon">
+              ${renderVisualIcon(item.icon, 'text-6xl', 'w-20 h-20')}
             </div>
             <p class="text-xs font-extrabold uppercase tracking-widest text-amber-300 mb-1">
               ${item.subtitle}
@@ -669,13 +1422,14 @@
             <h2 class="text-2xl sm:text-3xl font-extrabold text-white mb-3 leading-tight">
               ${item.title}
             </h2>
-            <p class="text-sm text-slate-200 bg-white/10 rounded-2xl p-4 border border-white/15 mb-5">
+            <p class="text-sm text-slate-100 bg-white/10 rounded-2xl p-4 border border-white/15 mb-5 leading-relaxed">
               ${item.description}
             </p>
             <button onclick="launchPartyConfetti()" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-400 hover:to-rose-400 text-white font-extrabold text-sm shadow-lg shadow-pink-600/30 transition active:scale-95">
               🎉 ¡Lanzar más Confeti!
             </button>
           </div>
+          ${buildContinueFooter(item)}
         </div>
       `;
     }
@@ -692,124 +1446,139 @@
       }
     }
 
-    /* ---------------------------------------------------------------------
-       PLANTILLA B: REQUISITO ESPECIAL QR #14 - GATITO MANEKI-NEKO DORADO
-       --------------------------------------------------------------------- */
+    /* PLANTILLA B: ESPECIAL QR #14 - GATITO MANEKI-NEKO DORADO */
     function buildManekiScreen(item) {
       return `
         <div class="w-full bg-gradient-to-b from-amber-500/25 via-red-950/60 to-slate-950 border-2 border-amber-400/70 rounded-3xl p-6 text-center shadow-2xl shadow-amber-500/20 relative overflow-hidden">
-          
-          <!-- Destellos dorados decorativos -->
           <div class="absolute top-6 left-6 text-2xl sparkle-1 select-none">✨</div>
           <div class="absolute top-10 right-7 text-2xl sparkle-2 select-none">🌟</div>
           <div class="absolute bottom-24 left-8 text-xl sparkle-3 select-none">✨</div>
           <div class="absolute bottom-28 right-8 text-2xl sparkle-1 select-none">🪙</div>
 
           <div class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-400/20 border border-amber-300/60 text-amber-200 text-xs font-extrabold uppercase tracking-wider mb-3">
-            ${item.badge}
+            ${item.badge || '✨ PREMIO ESPECIAL #14 ✨'}
           </div>
 
-          <!-- Ilustración SVG Personalizada de Maneki-neko con Pata Animada -->
           <div class="relative w-52 h-52 mx-auto my-2 flex items-center justify-center">
-            <!-- Halo dorado giratorio de fondo -->
             <div class="absolute inset-0 rounded-full bg-gradient-to-tr from-amber-500/30 via-yellow-300/20 to-red-500/20 blur-xl"></div>
 
             <svg viewBox="0 0 200 200" class="w-48 h-48 relative z-10 drop-shadow-[0_10px_20px_rgba(245,158,11,0.45)]">
-              <!-- Cojín rojo imperial -->
               <rect x="30" y="160" width="140" height="22" rx="11" fill="#dc2626" stroke="#fbbf24" stroke-width="3"/>
               <circle cx="42" cy="171" r="4" fill="#fbbf24"/>
               <circle cx="158" cy="171" r="4" fill="#fbbf24"/>
-
-              <!-- Cuerpo del gatito -->
               <ellipse cx="100" cy="128" rx="48" ry="42" fill="#fffbeb" stroke="#f59e0b" stroke-width="3.5"/>
-
-              <!-- Cabeza del gatito -->
-              <circle cx="100" cy="76" r="40" fill="#fffbeb" stroke="#f59e0b" stroke-width="3.5"/>
-
-              <!-- Oreja Izquierda -->
-              <path d="M 65 52 L 58 20 L 88 40 Z" fill="#fffbeb" stroke="#f59e0b" stroke-width="3.5" stroke-linejoin="round"/>
-              <path d="M 67 47 L 63 27 L 82 40 Z" fill="#ef4444"/>
-
-              <!-- Oreja Derecha -->
-              <path d="M 135 52 L 142 20 L 112 40 Z" fill="#fffbeb" stroke="#f59e0b" stroke-width="3.5" stroke-linejoin="round"/>
-              <path d="M 133 47 L 137 27 L 118 40 Z" fill="#ef4444"/>
-
-              <!-- Manchas de la suerte en la frente -->
-              <ellipse cx="100" cy="46" rx="10" ry="5" fill="#f59e0b" opacity="0.6"/>
-
-              <!-- Ojos sonrientes felices -->
-              <path d="M 78 72 Q 85 63 92 72" fill="none" stroke="#1e293b" stroke-width="3.8" stroke-linecap="round"/>
-              <path d="M 108 72 Q 115 63 122 72" fill="none" stroke="#1e293b" stroke-width="3.8" stroke-linecap="round"/>
-
-              <!-- Mejillas sonrojadas -->
-              <ellipse cx="73" cy="82" rx="6" ry="3.5" fill="#fb7185" opacity="0.7"/>
-              <ellipse cx="127" cy="82" rx="6" ry="3.5" fill="#fb7185" opacity="0.7"/>
-
-              <!-- Nariz y boquita -->
-              <polygon points="96,79 104,79 100,84" fill="#ef4444"/>
-              <path d="M 93 87 Q 100 92 100 84 Q 100 92 107 87" fill="none" stroke="#1e293b" stroke-width="2.5" stroke-linecap="round"/>
-
-              <!-- Bigotes -->
-              <line x1="52" y1="76" x2="67" y2="79" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
-              <line x1="50" y1="84" x2="66" y2="84" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
-              <line x1="148" y1="76" x2="133" y2="79" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
-              <line x1="150" y1="84" x2="134" y2="84" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
-
-              <!-- Collar Rojo y Cascabel Dorado -->
-              <path d="M 65 103 Q 100 116 135 103" fill="none" stroke="#dc2626" stroke-width="8" stroke-linecap="round"/>
-              <circle cx="100" cy="112" r="9" fill="#fbbf24" stroke="#b45309" stroke-width="2.5"/>
-              <line x1="95" y1="114" x2="105" y2="114" stroke="#b45309" stroke-width="2"/>
-
-              <!-- Moneda Koban Dorada en su pancita (Millones de Ryo / Suerte) -->
-              <rect x="92" y="122" width="28" height="38" rx="12" fill="#facc15" stroke="#b45309" stroke-width="2.5"/>
-              <text x="106" y="146" text-anchor="middle" fill="#92400e" font-size="16" font-weight="bold">福</text>
-
-              <!-- Pata Derecha sosteniendo la moneda -->
-              <ellipse cx="126" cy="136" rx="12" ry="16" fill="#fffbeb" stroke="#f59e0b" stroke-width="3"/>
-
-              <!-- PATA IZQUIERDA ANIMADA (Saluda arriba y abajo) -->
+              <path d="M55 75 L48 32 L82 54 Z" fill="#fffbeb" stroke="#f59e0b" stroke-width="3.5" stroke-linejoin="round"/>
+              <path d="M58 68 L53 40 L76 55 Z" fill="#ef4444"/>
+              <path d="M145 75 L152 32 L118 54 Z" fill="#fffbeb" stroke="#f59e0b" stroke-width="3.5" stroke-linejoin="round"/>
+              <path d="M142 68 L147 40 L124 55 Z" fill="#ef4444"/>
+              <ellipse cx="100" cy="82" rx="46" ry="38" fill="#fffbeb" stroke="#f59e0b" stroke-width="3.5"/>
+              <path d="M62 108 Q100 122 138 108" fill="none" stroke="#dc2626" stroke-width="9" stroke-linecap="round"/>
+              <circle cx="100" cy="116" r="9" fill="#fbbf24" stroke="#92400e" stroke-width="2.5"/>
+              <line x1="94" y1="116" x2="106" y2="116" stroke="#92400e" stroke-width="2"/>
+              <path d="M74 78 Q82 68 90 78" fill="none" stroke="#1e293b" stroke-width="3.5" stroke-linecap="round"/>
+              <path d="M110 78 Q118 68 126 78" fill="none" stroke="#1e293b" stroke-width="3.5" stroke-linecap="round"/>
+              <polygon points="100,86 95,92 105,92" fill="#f43f5e"/>
+              <path d="M92 96 Q100 103 108 96" fill="none" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
+              <line x1="50" y1="84" x2="68" y2="87" stroke="#94a3b8" stroke-width="2.5" stroke-linecap="round"/>
+              <line x1="48" y1="92" x2="68" y2="92" stroke="#94a3b8" stroke-width="2.5" stroke-linecap="round"/>
+              <line x1="150" y1="84" x2="132" y2="87" stroke="#94a3b8" stroke-width="2.5" stroke-linecap="round"/>
+              <line x1="152" y1="92" x2="132" y2="92" stroke="#94a3b8" stroke-width="2.5" stroke-linecap="round"/>
+              <ellipse cx="118" cy="138" rx="15" ry="22" fill="#fde047" stroke="#ca8a04" stroke-width="3"/>
+              <rect x="111" y="126" width="14" height="24" rx="3" fill="none" stroke="#ca8a04" stroke-width="2"/>
+              <circle cx="132" cy="136" r="11" fill="#fffbeb" stroke="#f59e0b" stroke-width="3"/>
               <g class="maneki-paw">
-                <rect x="46" y="64" width="24" height="48" rx="12" fill="#fffbeb" stroke="#f59e0b" stroke-width="3.5"/>
-                <!-- Almohadilla rosada de la patita -->
-                <circle cx="58" cy="76" r="5" fill="#fda4af"/>
-                <circle cx="52" cy="69" r="2.2" fill="#fda4af"/>
-                <circle cx="58" cy="67" r="2.2" fill="#fda4af"/>
-                <circle cx="64" cy="69" r="2.2" fill="#fda4af"/>
+                <rect x="52" y="64" width="24" height="46" rx="12" fill="#fffbeb" stroke="#f59e0b" stroke-width="3.5"/>
+                <circle cx="64" cy="74" r="6" fill="#fda4af"/>
+                <circle cx="57" cy="65" r="2.5" fill="#fda4af"/>
+                <circle cx="64" cy="63" r="2.5" fill="#fda4af"/>
+                <circle cx="71" cy="65" r="2.5" fill="#fda4af"/>
               </g>
             </svg>
           </div>
 
-          <!-- Mensaje Destacado Requerido -->
-          <div class="bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-slate-950 font-extrabold px-4 py-3 rounded-2xl shadow-lg shadow-amber-500/30 mb-3">
-            <h1 class="text-xl sm:text-2xl tracking-tight leading-snug">
-              ${item.title}
-            </h1>
-          </div>
-
-          <p class="text-xs font-bold uppercase tracking-widest text-amber-300 mb-2">
+          <h1 class="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-400 mb-2 leading-tight">
+            ${item.title}
+          </h1>
+          <p class="text-xs font-bold uppercase tracking-widest text-amber-300/90 mb-3">
             ${item.subtitle}
           </p>
-
-          <p class="text-sm text-amber-100/90 bg-black/30 rounded-2xl p-3.5 border border-amber-400/30 mb-5">
+          <p class="text-sm text-amber-50/90 bg-amber-500/10 border border-amber-400/30 rounded-2xl p-4 mb-5 leading-relaxed">
             ${item.description}
           </p>
 
-          <button onclick="launchGoldenConfetti(); playSoundEffect('fanfare');" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-extrabold text-sm shadow-xl shadow-amber-500/30 transition active:scale-95 flex items-center justify-center gap-2">
-            <span>🪙</span> ¡Invocar Lluvia de Fortuna Dorada!
+          <button onclick="launchGoldenConfetti(); playSoundEffect('fanfare');" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-slate-950 font-extrabold text-sm shadow-lg shadow-amber-500/30 transition active:scale-95">
+            🐾 ¡Atraer Buena Fortuna y Celebrar! ✨
           </button>
+          ${buildContinueFooter(item)}
         </div>
       `;
     }
 
-    /* ---------------------------------------------------------------------
-       PLANTILLA C: RETO FÍSICO (Temporizador visual de 60 segundos)
-       --------------------------------------------------------------------- */
+    /* PLANTILLA D: DINÁMICA DE SUBASTA / ENGAÑO (Botones limpios Opción A y Opción B + Confeti) */
+    function buildAuctionScreen(item) {
+      const labelA = item.optionA || 'Opción A';
+      const labelB = item.optionB || 'Opción B';
+      return `
+        <div class="w-full bg-gradient-to-b from-purple-700/30 via-indigo-950/70 to-slate-950 border border-purple-400/40 rounded-3xl p-6 text-center shadow-2xl shadow-purple-950/60 relative overflow-hidden">
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-400/40 text-purple-200 text-xs font-extrabold uppercase tracking-wider mb-3">
+            <span>🎭</span> ${item.badge || 'Subasta / Engaño'} • QR #${item.id}
+          </div>
+
+          <div class="w-20 h-20 rounded-3xl bg-purple-500/20 border border-purple-400/30 flex items-center justify-center mx-auto mb-3 animate-float-icon">
+            ${renderVisualIcon(item.icon || '⚖️', 'text-5xl', 'w-14 h-14')}
+          </div>
+
+          <h1 class="text-2xl sm:text-3xl font-extrabold text-white mb-1">
+            ${item.title}
+          </h1>
+          <p class="text-xs font-bold uppercase tracking-wider text-amber-300 mb-3">
+            ${item.subtitle}
+          </p>
+
+          <div class="bg-white/10 border border-white/15 rounded-2xl p-4 text-sm text-slate-100 mb-5 leading-relaxed">
+            ${item.description}
+          </div>
+
+          <p class="text-xs font-bold uppercase tracking-wider text-purple-200 mb-3">
+            👇 Toca tu elección antes de abrir el regalo:
+          </p>
+
+          <div class="grid grid-cols-2 gap-3 mb-4">
+            <button id="btn-auction-a" onclick="selectAuctionOption('A', '${labelA.replace(/'/g, "\\'")}')" class="p-4 rounded-2xl bg-gradient-to-b from-rose-500/30 to-pink-600/30 hover:from-rose-500/45 hover:to-pink-600/45 border-2 border-rose-400/60 flex flex-col items-center justify-center gap-2 transition active:scale-95 shadow-lg">
+              <span class="w-12 h-12 rounded-2xl bg-rose-500 text-white font-extrabold flex items-center justify-center text-xl shadow">A</span>
+              <span class="text-sm font-extrabold text-white">${labelA}</span>
+            </button>
+
+            <button id="btn-auction-b" onclick="selectAuctionOption('B', '${labelB.replace(/'/g, "\\'")}')" class="p-4 rounded-2xl bg-gradient-to-b from-amber-500/30 to-orange-600/30 hover:from-amber-500/45 hover:to-orange-600/45 border-2 border-amber-400/60 flex flex-col items-center justify-center gap-2 transition active:scale-95 shadow-lg">
+              <span class="w-12 h-12 rounded-2xl bg-amber-500 text-slate-950 font-extrabold flex items-center justify-center text-xl shadow">B</span>
+              <span class="text-sm font-extrabold text-white">${labelB}</span>
+            </button>
+          </div>
+
+          <div id="auction-verdict-box" class="hidden rounded-2xl bg-purple-500/20 border border-purple-400/40 p-3.5 text-center mb-3">
+            <p class="text-[11px] uppercase font-bold text-purple-200">¡Decisión bloqueada!</p>
+            <p id="auction-verdict-text" class="text-base font-extrabold text-amber-300 mt-0.5"></p>
+          </div>
+
+          <button onclick="launchPartyConfetti(); playSoundEffect('fanfare');" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-400 via-pink-500 to-purple-500 text-white font-extrabold text-sm shadow-lg shadow-purple-600/30 transition active:scale-95">
+            🎉 ¡Lanzar Confeti!
+          </button>
+          ${buildContinueFooter(item)}
+        </div>
+      `;
+    }
+
+    /* PLANTILLA C: RETO FÍSICO (Temporizador visual de 60 segundos + Ícono Custom) */
     function buildPhysicalScreen(item) {
       const total = item.duration || 60;
       return `
         <div class="w-full bg-gradient-to-b from-cyan-600/25 via-slate-900 to-slate-950 border border-cyan-400/40 rounded-3xl p-6 text-center shadow-2xl shadow-cyan-950/50 relative overflow-hidden">
           <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-extrabold uppercase tracking-wider mb-3">
-            <span>⚡</span> ${item.badge} • QR #${item.id}
+            <span>⚡</span> ${item.badge || 'Reto Físico'} • QR #${item.id}
+          </div>
+
+          <div class="w-16 h-16 rounded-2xl bg-cyan-500/15 border border-cyan-400/30 flex items-center justify-center mx-auto mb-2 animate-float-icon">
+            ${renderVisualIcon(item.icon || '⏱️', 'text-4xl', 'w-12 h-12')}
           </div>
 
           <h1 class="text-2xl sm:text-3xl font-extrabold text-white mb-1">
@@ -819,21 +1588,21 @@
             ${item.subtitle}
           </p>
 
-          <div class="bg-white/10 border border-white/15 rounded-2xl p-4 text-sm text-slate-100 mb-5 leading-relaxed">
+          <div class="bg-white/10 border border-white/15 rounded-2xl p-4 text-sm text-slate-100 mb-4 leading-relaxed">
             ${item.description}
           </div>
 
           <!-- Reloj Visual de 60 Segundos -->
-          <div class="relative w-44 h-44 mx-auto mb-5 flex items-center justify-center">
+          <div class="relative w-40 h-40 mx-auto mb-4 flex items-center justify-center">
             <svg class="w-full h-full -rotate-90" viewBox="0 0 120 120">
               <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="8" />
               <circle id="timer-progress-ring" cx="60" cy="60" r="52" fill="none" stroke="#22d3ee" stroke-width="8" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="0" class="transition-all duration-300" />
             </svg>
             <div class="absolute inset-0 flex flex-col items-center justify-center">
-              <span id="timer-display" class="text-4xl font-extrabold font-mono tracking-tight text-white">
-                01:00
+              <span id="timer-display" class="text-3xl font-extrabold font-mono tracking-tight text-white">
+                ${formatMMSS(total)}
               </span>
-              <span id="timer-status-label" class="text-[11px] uppercase tracking-widest text-cyan-300 font-bold mt-1">
+              <span id="timer-status-label" class="text-[10px] uppercase tracking-widest text-cyan-300 font-bold mt-1">
                 Listo para iniciar
               </span>
             </div>
@@ -842,16 +1611,17 @@
           <!-- Controles del Temporizador -->
           <div class="grid grid-cols-2 gap-2.5 mb-2.5">
             <button id="btn-timer-start" onclick="toggleChallengeTimer(${total})" class="py-3.5 px-4 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold text-sm shadow-lg shadow-cyan-500/30 transition active:scale-95 flex items-center justify-center gap-1.5">
-              <i data-lucide="play" class="w-4 h-4"></i> <span>Iniciar 60s</span>
+              <span>▶ Iniciar ${total}s</span>
             </button>
             <button onclick="resetChallengeTimer(${total})" class="py-3.5 px-4 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm border border-white/15 transition active:scale-95 flex items-center justify-center gap-1.5">
-              <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Reiniciar
+              <span>🔄 Reiniciar</span>
             </button>
           </div>
 
           <button onclick="completeChallengeSuccess()" class="w-full py-3 rounded-2xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/40 text-emerald-300 font-extrabold text-xs uppercase tracking-wider transition active:scale-95">
             ✅ ¡Reto Superado! Celebrar Victoria
           </button>
+          ${buildContinueFooter(item)}
         </div>
       `;
     }
@@ -877,7 +1647,6 @@
       const display = document.getElementById('timer-display');
 
       if (timerRunning) {
-        // Pausar
         stopActiveTimer();
         if (btn) btn.innerHTML = '<span>▶ Continuar</span>';
         if (status) status.textContent = 'En pausa';
@@ -931,13 +1700,13 @@
       if (display) display.textContent = formatMMSS(totalSeconds);
       if (status) {
         status.textContent = 'Listo para iniciar';
-        status.className = 'text-[11px] uppercase tracking-widest text-cyan-300 font-bold mt-1';
+        status.className = 'text-[10px] uppercase tracking-widest text-cyan-300 font-bold mt-1';
       }
       if (ring) {
         ring.style.strokeDashoffset = 0;
         ring.setAttribute('stroke', '#22d3ee');
       }
-      if (btn) btn.innerHTML = '<span>▶ Iniciar 60s</span>';
+      if (btn) btn.innerHTML = `<span>▶ Iniciar ${totalSeconds}s</span>`;
     }
 
     function completeChallengeSuccess() {
@@ -949,68 +1718,6 @@
       }
       playSoundEffect('fanfare');
       launchPartyConfetti();
-    }
-
-    /* ---------------------------------------------------------------------
-       PLANTILLA D: DINÁMICA DE SUBASTA / ENGAÑO (Opción A vs Opción B)
-       --------------------------------------------------------------------- */
-    function buildAuctionScreen(item) {
-      return `
-        <div class="w-full bg-gradient-to-b from-purple-700/30 via-indigo-950/70 to-slate-950 border border-purple-400/40 rounded-3xl p-6 text-center shadow-2xl shadow-purple-950/60 relative overflow-hidden">
-          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-400/40 text-purple-200 text-xs font-extrabold uppercase tracking-wider mb-3">
-            <span>🎭</span> ${item.badge} • QR #${item.id}
-          </div>
-
-          <div class="text-5xl mb-2">⚖️</div>
-          <h1 class="text-2xl sm:text-3xl font-extrabold text-white mb-1">
-            ${item.title}
-          </h1>
-          <p class="text-xs font-bold uppercase tracking-wider text-amber-300 mb-3">
-            ${item.subtitle}
-          </p>
-
-          <div class="bg-white/10 border border-white/15 rounded-2xl p-4 text-sm text-slate-100 mb-5 leading-relaxed">
-            ${item.description}
-          </div>
-
-          <p class="text-xs font-bold uppercase tracking-wider text-purple-200 mb-3">
-            👇 Toca en la pantalla tu decisión final antes de abrir el objeto físico:
-          </p>
-
-          <div class="grid grid-cols-1 gap-3 mb-4">
-            <button id="btn-auction-a" onclick="selectAuctionOption('A', '${(item.optionA || 'Opción A').replace(/'/g, "\\'")}')" class="p-4 rounded-2xl bg-gradient-to-r from-rose-500/25 to-pink-600/25 hover:from-rose-500/40 hover:to-pink-600/40 border-2 border-rose-400/50 text-left flex items-center justify-between transition active:scale-95">
-              <div class="flex items-center gap-3">
-                <span class="w-10 h-10 rounded-xl bg-rose-500 text-white font-extrabold flex items-center justify-center text-lg shrink-0">A</span>
-                <div>
-                  <div class="text-sm font-extrabold text-white">${item.optionA || 'Opción Misteriosa A'}</div>
-                  <div class="text-[11px] text-rose-200">¿Premio real o broma?</div>
-                </div>
-              </div>
-              <i data-lucide="lock" class="w-4 h-4 text-rose-300"></i>
-            </button>
-
-            <button id="btn-auction-b" onclick="selectAuctionOption('B', '${(item.optionB || 'Opción B').replace(/'/g, "\\'")}')" class="p-4 rounded-2xl bg-gradient-to-r from-amber-500/25 to-orange-600/25 hover:from-amber-500/40 hover:to-orange-600/40 border-2 border-amber-400/50 text-left flex items-center justify-between transition active:scale-95">
-              <div class="flex items-center gap-3">
-                <span class="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 font-extrabold flex items-center justify-center text-lg shrink-0">B</span>
-                <div>
-                  <div class="text-sm font-extrabold text-white">${item.optionB || 'Opción Misteriosa B'}</div>
-                  <div class="text-[11px] text-amber-200">¿Premio real o broma?</div>
-                </div>
-              </div>
-              <i data-lucide="lock" class="w-4 h-4 text-amber-300"></i>
-            </button>
-          </div>
-
-          <div id="auction-verdict-box" class="hidden rounded-2xl bg-purple-500/20 border border-purple-400/40 p-4 text-center">
-            <p class="text-xs uppercase font-bold text-purple-200">¡Decisión bloqueada!</p>
-            <p id="auction-verdict-text" class="text-base font-extrabold text-amber-300 mt-1"></p>
-            <p class="text-xs text-slate-300 mt-1">¡Anfitrión, es momento de revelar el contenido físico!</p>
-            <button onclick="launchPartyConfetti(); playSoundEffect('fanfare');" class="mt-3 px-4 py-2 rounded-xl bg-amber-400 text-slate-950 font-extrabold text-xs">
-              🎉 Celebrar Revelación
-            </button>
-          </div>
-        </div>
-      `;
     }
 
     function selectAuctionOption(letter, label) {
@@ -1033,14 +1740,16 @@
       }
     }
 
-    /* ---------------------------------------------------------------------
-       PLANTILLA E: RETO DE BAILE (Ecualizador Neón y Fiesta)
-       --------------------------------------------------------------------- */
+    /* PLANTILLA E: RETO DE BAILE */
     function buildDanceScreen(item) {
       return `
         <div class="w-full bg-gradient-to-b from-emerald-500/25 via-fuchsia-950/60 to-slate-950 border border-emerald-400/40 rounded-3xl p-6 text-center shadow-2xl shadow-emerald-950/50 relative overflow-hidden">
           <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-xs font-extrabold uppercase tracking-wider mb-3">
-            <span>🪩</span> ${item.badge} • QR #${item.id}
+            <span>🪩</span> ${item.badge || 'Reto de Baile'} • QR #${item.id}
+          </div>
+
+          <div class="w-20 h-20 rounded-3xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center mx-auto mb-2 animate-float-icon">
+            ${renderVisualIcon(item.icon || '💃', 'text-5xl', 'w-14 h-14')}
           </div>
 
           <h1 class="text-2xl sm:text-3xl font-extrabold text-white mb-1">
@@ -1051,7 +1760,7 @@
           </p>
 
           <!-- Ecualizador Musical Animado -->
-          <div class="h-24 w-56 mx-auto mb-5 flex items-end justify-center gap-2 bg-black/30 px-5 py-3 rounded-2xl border border-white/10">
+          <div class="h-20 w-56 mx-auto mb-4 flex items-end justify-center gap-2 bg-black/30 px-5 py-3 rounded-2xl border border-white/10">
             <div class="w-3 bg-gradient-to-t from-emerald-400 to-cyan-300 rounded-full eq-bar" style="animation-delay: 0.0s"></div>
             <div class="w-3 bg-gradient-to-t from-pink-500 to-amber-300 rounded-full eq-bar" style="animation-delay: 0.2s"></div>
             <div class="w-3 bg-gradient-to-t from-purple-500 to-pink-400 rounded-full eq-bar" style="animation-delay: 0.4s"></div>
@@ -1061,73 +1770,164 @@
             <div class="w-3 bg-gradient-to-t from-emerald-400 to-cyan-300 rounded-full eq-bar" style="animation-delay: 0.15s"></div>
           </div>
 
-          <div class="bg-white/10 border border-white/15 rounded-2xl p-4 text-sm text-slate-100 mb-4 leading-relaxed">
+          <div class="bg-white/10 border border-white/15 rounded-2xl p-4 text-sm text-slate-100 mb-5 leading-relaxed">
             ${item.description}
-          </div>
-
-          <div class="bg-fuchsia-500/20 border border-fuchsia-400/30 rounded-xl px-3 py-2 text-xs text-fuchsia-200 font-semibold mb-5">
-            🎵 Pista sugerida: <span class="text-white font-bold">${item.songHint || 'Música en la sala'}</span>
           </div>
 
           <button onclick="launchPartyConfetti(); playSoundEffect('fanfare');" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 text-slate-950 font-extrabold text-sm shadow-lg shadow-emerald-500/30 transition active:scale-95">
             💃 ¡Coreografía Completada! Entregar Premio
           </button>
+          ${buildContinueFooter(item)}
         </div>
       `;
     }
 
+    /* PLANTILLA F: MENSAJE FINAL DE FELIZ CUMPLEAÑOS ESTILO CODER + AUDIO RPG 8-BIT */
+    function buildRPGBirthdayScreen(item) {
+      return `
+        <div class="w-full bg-slate-950 border-2 border-emerald-400/80 rounded-3xl overflow-hidden shadow-[0_0_35px_rgba(16,185,129,0.28)] font-coder relative">
+          <!-- Barra superior estilo Terminal IDE / Consola RPG -->
+          <div class="bg-slate-900 px-4 py-2.5 border-b border-emerald-500/30 flex items-center justify-between">
+            <div class="flex items-center gap-1.5">
+              <span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span>
+              <span class="w-3 h-3 rounded-full bg-amber-400 inline-block"></span>
+              <span class="w-3 h-3 rounded-full bg-emerald-400 inline-block"></span>
+              <span class="text-[11px] text-emerald-300 font-bold ml-2">birthday_quest_rpg.sh</span>
+            </div>
+            <span class="text-[10px] font-pixel text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded border border-amber-400/40">8-BIT RPG</span>
+          </div>
+
+          <div class="p-5 space-y-4 rpg-scanlines">
+            <!-- Cabecera de Estadísticas RPG -->
+            <div class="bg-slate-900/90 border border-emerald-500/40 rounded-2xl p-3.5 flex items-center gap-3">
+              <div class="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center shrink-0 animate-float-icon">
+                ${renderVisualIcon(item.icon || '💻', 'text-3xl', 'w-10 h-10')}
+              </div>
+              <div class="text-left flex-1 min-w-0">
+                <div class="text-[10px] font-pixel text-amber-300 tracking-wider mb-1 truncate">${item.subtitle || 'LVL UP!'}</div>
+                <h1 class="text-base sm:text-lg font-extrabold text-white leading-snug">${item.title}</h1>
+                <!-- Barra HP / EXP RPG -->
+                <div class="mt-2 flex items-center gap-2">
+                  <span class="text-[10px] font-bold text-emerald-400">EXP</span>
+                  <div class="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden border border-emerald-500/30">
+                    <div class="h-full w-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-amber-300"></div>
+                  </div>
+                  <span class="text-[10px] font-bold text-amber-300">MAX!</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Caja de Diálogo / Código con Efecto Máquina de Escribir -->
+            <div class="bg-black/85 border-2 border-emerald-500/50 rounded-2xl p-4 text-left min-h-[190px] max-h-[280px] overflow-y-auto shadow-inner">
+              <div class="text-[11px] text-cyan-400 mb-2 font-bold">
+                <span class="text-pink-400">const</span> <span class="text-amber-300">felizCumpleanos</span> = () =&gt; &#123;
+              </div>
+              <pre id="rpg-typewriter-text" class="text-xs sm:text-sm text-emerald-300 whitespace-pre-wrap break-words font-coder leading-relaxed pl-2"></pre><span class="coder-cursor"></span>
+              <div class="text-[11px] text-cyan-400 mt-2 font-bold">&#125;;</div>
+            </div>
+
+            <!-- Controles de Audio RPG y Celebración -->
+            <div class="space-y-2">
+              <button id="btn-rpg-bgm" onclick="toggleRPGBackgroundMusic()" class="w-full py-2.5 px-3 rounded-xl bg-emerald-500/25 border border-emerald-400 text-emerald-200 font-coder font-bold text-xs flex items-center justify-center gap-2 transition active:scale-95">
+                <span>🔊 Música RPG 8-Bit: SONANDO</span>
+              </button>
+
+              <div class="grid grid-cols-2 gap-2">
+                <button onclick="startTypewriterAnimation(getActiveQRItem().description || birthdayRPGConfig.message)" class="py-3 px-3 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-cyan-200 font-coder font-bold text-xs transition active:scale-95">
+                  ⌨️ Repetir Texto
+                </button>
+                <button onclick="launchPartyConfetti(); playSoundEffect('fanfare');" class="py-3 px-3 rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 text-slate-950 font-coder font-extrabold text-xs shadow-lg shadow-emerald-500/25 transition active:scale-95">
+                  🎉 Lanzar Confeti
+                </button>
+              </div>
+
+              <button onclick="goToBubblesHub()" class="w-full py-2.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 font-coder font-bold text-xs transition">
+                🫧 Volver al Tablero de Burbujas (20/20)
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function startTypewriterAnimation(fullText) {
+      stopTypewriterEffect();
+      const target = document.getElementById('rpg-typewriter-text');
+      if (!target) return;
+      target.textContent = '';
+      const chars = Array.from(fullText || '');
+      let index = 0;
+
+      typewriterInterval = setInterval(() => {
+        if (index < chars.length) {
+          const ch = chars[index];
+          target.textContent += ch;
+          if (ch.trim() !== '' && index % 2 === 0) {
+            playSoundEffect('rpg_blip');
+          }
+          index++;
+        } else {
+          stopTypewriterEffect();
+        }
+      }, 32);
+    }
+
     /*************************************************************************
-     * 5. EFECTOS DE CONFETI (Festejo normal y Lluvia Dorada QR #14)
+     * 7. CONFETI
      *************************************************************************/
     function launchPartyConfetti() {
       if (typeof confetti !== 'function') return;
-      confetti({
-        particleCount: 90,
-        spread: 75,
-        origin: { y: 0.65 }
-      });
+      confetti({ particleCount: 90, spread: 75, origin: { y: 0.65 } });
     }
 
     function launchGoldenConfetti() {
       if (typeof confetti !== 'function') return;
       const goldColors = ['#fbbf24', '#f59e0b', '#fef08a', '#dc2626', '#ffffff'];
-      confetti({
-        particleCount: 110,
-        spread: 85,
-        origin: { y: 0.6 },
-        colors: goldColors
-      });
+      confetti({ particleCount: 110, spread: 85, origin: { y: 0.6 }, colors: goldColors });
     }
 
     /*************************************************************************
-     * 6. FUNCIONES DEL PANEL DE ORGANIZADOR (Selector, Generador QR y Editor)
+     * 8. PANEL DE ORGANIZADOR: AGREGAR, QUITAR CON 'X', EDITAR Y CAMBIAR ÍCONO
      *************************************************************************/
     function toggleOrganizerModal(show) {
       const modal = document.getElementById('organizer-modal');
       if (show) {
-        renderOrganizerGrid();
+        updateCounters();
+        syncRPGConfigInputs();
         renderEditorList();
+        renderOrganizerGrid();
         modal.classList.remove('hidden');
         modal.classList.add('flex');
+        lucide.createIcons();
       } else {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
       }
     }
 
+    function syncRPGConfigInputs() {
+      const t = document.getElementById('rpg-cfg-title');
+      const s = document.getElementById('rpg-cfg-subtitle');
+      const m = document.getElementById('rpg-cfg-message');
+      if (t) t.value = birthdayRPGConfig.title || '';
+      if (s) s.value = birthdayRPGConfig.subtitle || '';
+      if (m) m.value = birthdayRPGConfig.message || '';
+    }
+
     function switchOrganizerTab(tabName) {
-      ['selector', 'print', 'editor'].forEach(t => {
+      ['editor', 'selector', 'print'].forEach(t => {
         const content = document.getElementById(`tab-content-${t}`);
         const btn = document.getElementById(`tab-btn-${t}`);
         if (t === tabName) {
           content.classList.remove('hidden');
-          btn.className = 'px-4 py-2 text-xs font-bold rounded-t-xl border-b-2 border-pink-500 text-pink-400 bg-white/5';
+          btn.className = 'px-4 py-2 text-xs font-bold rounded-t-xl border-b-2 border-pink-500 text-pink-400 bg-white/5 shrink-0';
         } else {
           content.classList.add('hidden');
-          btn.className = 'px-4 py-2 text-xs font-bold rounded-t-xl border-b-2 border-transparent text-slate-400 hover:text-white';
+          btn.className = 'px-4 py-2 text-xs font-bold rounded-t-xl border-b-2 border-transparent text-slate-400 hover:text-white shrink-0';
         }
       });
 
+      if (tabName === 'selector') renderOrganizerGrid();
       if (tabName === 'print') {
         const input = document.getElementById('input-base-url');
         if (!input.value) {
@@ -1139,7 +1939,8 @@
 
     function getCategoryBadgeStyle(type) {
       switch (type) {
-        case 'maneki': return { label: '🐱 Especial #14', cls: 'border-amber-400 bg-amber-500/20 text-amber-200' };
+        case 'rpg_birthday': return { label: '💻 Cumpleaños RPG', cls: 'border-lime-400 bg-lime-500/20 text-lime-200' };
+        case 'maneki': return { label: '🐱 Especial Maneki', cls: 'border-amber-400 bg-amber-500/20 text-amber-200' };
         case 'gift': return { label: '🎁 Regalo Directo', cls: 'border-pink-500/40 bg-pink-500/15 text-pink-200' };
         case 'physical': return { label: '⏱️ Reto Físico', cls: 'border-cyan-500/40 bg-cyan-500/15 text-cyan-200' };
         case 'auction': return { label: '🎭 Subasta / Engaño', cls: 'border-purple-500/40 bg-purple-500/15 text-purple-200' };
@@ -1148,79 +1949,180 @@
       }
     }
 
-    function renderOrganizerGrid() {
-      const grid = document.getElementById('organizer-grid');
-      if (!grid) return;
+    // Agregar un nuevo QR del tipo elegido
+    function addNewQRItem(type) {
+      const nextId = qrList.length + 1;
+      const templates = {
+        gift: {
+          id: nextId,
+          type: 'gift',
+          badge: 'Regalo Directo',
+          title: 'Regalo Sorpresa!',
+          subtitle: 'Un premio directo para consentirte',
+          description: '¡Premio directo desbloqueado! Recoge tu regalo.',
+          icon: '🎁'
+        },
+        physical: {
+          id: nextId,
+          type: 'physical',
+          badge: 'Reto Físico',
+          title: '¡Nuevo Reto Físico!',
+          subtitle: 'Prueba contra el reloj en 60 segundos',
+          description: 'Supera esta prueba antes de que el temporizador llegue a cero para ganar tu premio.',
+          duration: 60,
+          icon: '🔌'
+        },
+        auction: {
+          id: nextId,
+          type: 'auction',
+          badge: 'Subasta / Engaño',
+          title: '¿Instinto o Trampa?',
+          subtitle: 'Una opción es broma, la otra es real',
+          description: 'Elige sabiamente entre las dos opciones físicas frente a ti.',
+          optionA: 'Opción A',
+          optionB: 'Opción B',
+          icon: '🎭'
+        },
+        dance: {
+          id: nextId,
+          type: 'dance',
+          badge: 'Reto de Baile',
+          title: '¡Pista de Baile Activada!',
+          subtitle: 'Sube el volumen de la música',
+          description: 'Imita la coreografía que suena en la sala durante al menos 30 segundos.',
+          icon: '💃'
+        },
+        maneki: {
+          id: nextId,
+          type: 'maneki',
+          badge: `✨ Especial #${nextId} ✨`,
+          title: '¡Felicidades, ganaste un gatito Maneki!',
+          subtitle: 'Amuleto de la fortuna, prosperidad y buena vibra',
+          description: 'Has desbloqueado el tesoro más especial de la búsqueda.',
+          icon: '🐱'
+        },
+        rpg_birthday: {
+          id: nextId,
+          type: 'rpg_birthday',
+          badge: '💻 Cumpleaños RPG',
+          title: birthdayRPGConfig.title,
+          subtitle: birthdayRPGConfig.subtitle,
+          description: birthdayRPGConfig.message,
+          icon: '💻'
+        }
+      };
 
-      grid.innerHTML = qrList.map(item => {
-        const st = getCategoryBadgeStyle(item.type);
-        const isCurrent = item.id === currentQRId;
+      qrList.push(templates[type] || templates.gift);
+      saveQRData();
+      renderEditorList();
+      renderOrganizerGrid();
+    }
+
+    // Eliminar cualquier QR con el botón 'X' y renumerar automáticamente 1..N
+    function removeQRItem(index) {
+      if (qrList.length <= 1) return;
+      qrList.splice(index, 1);
+      // Renumerar secuencialmente para que no queden huecos
+      qrList.forEach((item, idx) => {
+        item.id = idx + 1;
+      });
+      if (currentQRId > qrList.length) currentQRId = qrList.length;
+      saveQRData();
+      renderEditorList();
+      renderOrganizerGrid();
+      renderCurrentScreen();
+    }
+
+    // Cambiar el tipo de dinámica de un QR existente
+    function changeQRType(index, newType) {
+      if (!qrList[index]) return;
+      qrList[index].type = newType;
+      const labels = {
+        gift: 'Regalo Directo',
+        physical: 'Reto Físico',
+        auction: 'Subasta / Engaño',
+        dance: 'Reto de Baile',
+        maneki: `✨ Especial #${qrList[index].id} ✨`,
+        rpg_birthday: '💻 Cumpleaños RPG'
+      };
+      qrList[index].badge = labels[newType] || 'Sorpresa';
+      if (newType === 'auction') {
+        qrList[index].optionA = qrList[index].optionA || 'Opción A';
+        qrList[index].optionB = qrList[index].optionB || 'Opción B';
+      }
+      saveQRData();
+      renderEditorList();
+      renderCurrentScreen();
+    }
+
+    function setAuctionPresetLabels(index, mode) {
+      if (!qrList[index]) return;
+      if (mode === '12') {
+        qrList[index].optionA = 'Opción 1';
+        qrList[index].optionB = 'Opción 2';
+      } else {
+        qrList[index].optionA = 'Opción A';
+        qrList[index].optionB = 'Opción B';
+      }
+      saveQRData();
+      renderEditorList();
+      renderCurrentScreen();
+    }
+
+    // Ventana Modal de Selección de Ícono / Imagen
+    function openIconPicker(index) {
+      editingIconIndex = index;
+      const modal = document.getElementById('icon-picker-modal');
+      const grid = document.getElementById('icon-picker-grid');
+      const urlInput = document.getElementById('custom-img-url-input');
+
+      const currentIcon = qrList[index]?.icon || '🎁';
+      urlInput.value = currentIcon.startsWith('http') ? currentIcon : '';
+
+      grid.innerHTML = ICON_GALLERY.map(entry => {
+        const active = entry.icon === currentIcon ? 'ring-2 ring-pink-500 bg-pink-500/20' : 'bg-slate-950 hover:bg-white/10';
         return `
-          <button onclick="goToQR(${item.id}); toggleOrganizerModal(false);" class="p-3.5 rounded-2xl border text-left transition hover:scale-[1.02] active:scale-95 flex flex-col justify-between ${st.cls} ${isCurrent ? 'ring-2 ring-white' : ''}">
-            <div class="flex items-center justify-between w-full mb-1.5">
-              <span class="text-xs font-extrabold px-2 py-0.5 rounded-full bg-black/30">QR #${item.id}</span>
-              <span class="text-[10px] font-bold opacity-90">${st.label}</span>
-            </div>
-            <div class="text-xs font-bold text-white line-clamp-2 leading-snug">${item.title}</div>
+          <button onclick="selectGalleryIcon('${entry.icon}')" class="p-2.5 rounded-2xl border border-white/10 flex flex-col items-center justify-center gap-1 transition active:scale-90 ${active}">
+            <span class="text-2xl">${entry.icon}</span>
+            <span class="text-[9px] text-slate-300 font-semibold truncate w-full text-center">${entry.label}</span>
           </button>
         `;
       }).join('');
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
     }
 
-    // Generador automático de los 20 códigos QR listos para imprimir
-    function renderPrintableQRs() {
-      const baseInput = document.getElementById('input-base-url');
-      let baseUrl = (baseInput && baseInput.value.trim()) || (window.location.origin + window.location.pathname);
-      // Limpiar hashes previos
-      baseUrl = baseUrl.split('#')[0];
-
-      const previewSheet = document.getElementById('qr-preview-sheet');
-      const printGrid = document.getElementById('print-qr-grid');
-      previewSheet.innerHTML = '';
-      printGrid.innerHTML = '';
-
-      qrList.forEach(item => {
-        const fullUrl = `${baseUrl}#qr-${item.id}`;
-        const st = getCategoryBadgeStyle(item.type);
-
-        // Crear tarjeta para vista previa y para impresión
-        [previewSheet, printGrid].forEach((container, idx) => {
-          const card = document.createElement('div');
-          card.className = 'border-2 border-dashed border-slate-300 rounded-xl p-3 flex flex-col items-center text-center bg-white';
-
-          const canvas = document.createElement('canvas');
-          canvas.className = 'w-32 h-32 mb-2';
-
-          // Generar QR con QRious
-          new QRious({
-            element: canvas,
-            value: fullUrl,
-            size: 220,
-            level: 'H'
-          });
-
-          const titleEl = document.createElement('div');
-          titleEl.className = 'font-extrabold text-sm text-slate-900';
-          titleEl.textContent = `CÓDIGO QR #${item.id}`;
-
-          const subEl = document.createElement('div');
-          subEl.className = 'text-[10px] font-semibold text-slate-500 mt-0.5';
-          subEl.textContent = idx === 0 ? `${st.label}` : '¡Escanéame para descubrir tu sorpresa!';
-
-          const urlEl = document.createElement('div');
-          urlEl.className = 'text-[9px] text-slate-400 truncate max-w-full mt-1';
-          urlEl.textContent = `#qr-${item.id}`;
-
-          card.appendChild(titleEl);
-          card.appendChild(canvas);
-          card.appendChild(subEl);
-          card.appendChild(urlEl);
-          container.appendChild(card);
-        });
-      });
+    function closeIconPicker() {
+      const modal = document.getElementById('icon-picker-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      editingIconIndex = null;
     }
 
-    // Editor interactivo para modificar los textos antes del cumpleaños
+    function selectGalleryIcon(iconChar) {
+      if (editingIconIndex !== null && qrList[editingIconIndex]) {
+        qrList[editingIconIndex].icon = iconChar;
+        saveQRData();
+        renderEditorList();
+        renderCurrentScreen();
+      }
+      closeIconPicker();
+    }
+
+    function selectCustomImageUrl() {
+      const urlInput = document.getElementById('custom-img-url-input');
+      const val = urlInput.value.trim();
+      if (val && editingIconIndex !== null && qrList[editingIconIndex]) {
+        qrList[editingIconIndex].icon = val;
+        saveQRData();
+        renderEditorList();
+        renderCurrentScreen();
+      }
+      closeIconPicker();
+    }
+
+    // Renderizar la lista completa de edición con botón 'X' y botón de imagen
     function renderEditorList() {
       const list = document.getElementById('editor-list');
       if (!list) return;
@@ -1228,27 +2130,72 @@
       list.innerHTML = qrList.map((item, idx) => {
         const st = getCategoryBadgeStyle(item.type);
         return `
-          <div class="bg-slate-900/90 border border-white/10 rounded-2xl p-4 space-y-2">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-extrabold text-pink-400">QR #${item.id} (${st.label})</span>
-              <button onclick="goToQR(${item.id}); toggleOrganizerModal(false);" class="text-xs text-amber-300 hover:underline">
-                Ver pantalla →
-              </button>
+          <div class="bg-slate-900/95 border border-white/10 rounded-2xl p-4 space-y-3 relative">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2.5">
+              <div class="flex items-center gap-2.5">
+                <!-- Botón para abrir la ventanita de íconos/imágenes -->
+                <button onclick="openIconPicker(${idx})" class="w-12 h-12 rounded-2xl bg-slate-950 hover:bg-pink-500/20 border border-pink-400/40 flex flex-col items-center justify-center transition group shrink-0" title="Cambiar imagen o ícono">
+                  ${renderVisualIcon(item.icon, 'text-2xl', 'w-8 h-8')}
+                  <span class="text-[8px] text-pink-300 font-bold uppercase mt-0.5">Cambiar</span>
+                </button>
+
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-extrabold text-pink-400">QR #${item.id}</span>
+                    <select onchange="changeQRType(${idx}, this.value)" class="bg-slate-950 border border-white/15 rounded-lg px-2 py-1 text-xs font-bold text-amber-300 focus:outline-none">
+                      <option value="gift" ${item.type === 'gift' ? 'selected' : ''}>🎁 Regalo Directo</option>
+                      <option value="physical" ${item.type === 'physical' ? 'selected' : ''}>⏱️ Reto Físico</option>
+                      <option value="auction" ${item.type === 'auction' ? 'selected' : ''}>🎭 Subasta / Engaño</option>
+                      <option value="dance" ${item.type === 'dance' ? 'selected' : ''}>💃 Reto de Baile</option>
+                      <option value="maneki" ${item.type === 'maneki' ? 'selected' : ''}>🐱 Especial Maneki</option>
+                      <option value="rpg_birthday" ${item.type === 'rpg_birthday' ? 'selected' : ''}>💻 Cumpleaños Coder/RPG</option>
+                    </select>
+                  </div>
+                  <p class="text-[10px] text-slate-400 mt-0.5">Toca el recuadro izquierdo para elegir otra imagen (cafecito, lentes, etc.)</p>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <button onclick="goToQR(${item.id}); toggleOrganizerModal(false);" class="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs text-amber-300 font-semibold">
+                  Ver pantalla →
+                </button>
+                <!-- Botón X para quitar este QR -->
+                <button onclick="removeQRItem(${idx})" class="w-8 h-8 rounded-xl bg-red-500/15 hover:bg-red-500/30 border border-red-500/30 text-red-300 flex items-center justify-center font-extrabold text-xs transition" title="Quitar este QR">
+                  ✕
+                </button>
+              </div>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
                 <label class="text-[10px] uppercase text-slate-400 font-bold">Título Principal</label>
-                <input type="text" value="${item.title.replace(/"/g, '&quot;')}" oninput="updateQRField(${idx}, 'title', this.value)" class="w-full bg-slate-950 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white" />
+                <input type="text" value="${(item.title || '').replace(/"/g, '&quot;')}" oninput="updateQRField(${idx}, 'title', this.value)" class="w-full bg-slate-950 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:border-pink-500 focus:outline-none" />
               </div>
               <div>
                 <label class="text-[10px] uppercase text-slate-400 font-bold">Subtítulo</label>
-                <input type="text" value="${item.subtitle.replace(/"/g, '&quot;')}" oninput="updateQRField(${idx}, 'subtitle', this.value)" class="w-full bg-slate-950 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white" />
+                <input type="text" value="${(item.subtitle || '').replace(/"/g, '&quot;')}" oninput="updateQRField(${idx}, 'subtitle', this.value)" class="w-full bg-slate-950 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:border-pink-500 focus:outline-none" />
               </div>
             </div>
+
             <div>
               <label class="text-[10px] uppercase text-slate-400 font-bold">Instrucción o Descripción del Premio / Reto</label>
-              <textarea rows="2" oninput="updateQRField(${idx}, 'description', this.value)" class="w-full bg-slate-950 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white">${item.description}</textarea>
+              <textarea rows="2" oninput="updateQRField(${idx}, 'description', this.value)" class="w-full bg-slate-950 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:border-pink-500 focus:outline-none">${item.description || ''}</textarea>
             </div>
+
+            ${item.type === 'auction' ? `
+              <div class="pt-2 border-t border-white/10 flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] uppercase text-purple-300 font-bold">Botones de Subasta:</span>
+                  <button onclick="setAuctionPresetLabels(${idx}, 'AB')" class="px-2.5 py-1 rounded-lg bg-purple-500/20 border border-purple-400/40 text-[11px] font-bold text-purple-200 hover:bg-purple-500/30">
+                    Usar "Opción A / Opción B"
+                  </button>
+                  <button onclick="setAuctionPresetLabels(${idx}, '12')" class="px-2.5 py-1 rounded-lg bg-white/10 border border-white/15 text-[11px] font-bold text-slate-200 hover:bg-white/20">
+                    Usar "Opción 1 / Opción 2"
+                  </button>
+                </div>
+                <span class="text-[11px] text-amber-300 font-bold">Actual: ${item.optionA || 'Opción A'} vs ${item.optionB || 'Opción B'}</span>
+              </div>
+            ` : ''}
           </div>
         `;
       }).join('');
@@ -1261,6 +2208,136 @@
       if (qrList[index].id === currentQRId) {
         renderCurrentScreen();
       }
+    }
+
+    function renderOrganizerGrid() {
+      const grid = document.getElementById('organizer-grid');
+      if (!grid) return;
+
+      grid.innerHTML = qrList.map(item => {
+        const st = getCategoryBadgeStyle(item.type);
+        const isCurrent = item.id === currentQRId;
+        return `
+          <button onclick="goToQR(${item.id}); toggleOrganizerModal(false);" class="p-3.5 rounded-2xl border text-left transition hover:scale-[1.02] active:scale-95 flex flex-col justify-between ${st.cls} ${isCurrent ? 'ring-2 ring-white' : ''}">
+            <div class="flex items-center justify-between w-full mb-2">
+              <span class="text-xs font-extrabold px-2 py-0.5 rounded-full bg-black/30">QR #${item.id}</span>
+              <span class="text-xl">${item.icon && !item.icon.startsWith('http') ? item.icon : '🖼️'}</span>
+            </div>
+            <div class="text-xs font-bold text-white line-clamp-1">${item.title}</div>
+            <div class="text-[10px] text-slate-300 line-clamp-2 mt-0.5 opacity-85">${item.description}</div>
+          </button>
+        `;
+      }).join('');
+    }
+
+    // Generador de QRs (Con opción de incrustar los textos editados en el propio QR)
+    function renderPrintableQRs() {
+      const baseInput = document.getElementById('input-base-url');
+      const embedChk = document.getElementById('chk-embed-data');
+      const shouldEmbed = embedChk ? embedChk.checked : true;
+
+      let baseUrl = (baseInput && baseInput.value.trim()) || (window.location.origin + window.location.pathname);
+      baseUrl = baseUrl.split('#')[0];
+
+      const previewSheet = document.getElementById('qr-preview-sheet');
+      const printGrid = document.getElementById('print-qr-grid');
+      previewSheet.innerHTML = '';
+      printGrid.innerHTML = '';
+
+      qrList.forEach(item => {
+        const encoded = shouldEmbed ? `?d=${encodePayload(item)}` : '';
+        const fullUrl = `${baseUrl}#qr-${item.id}${encoded}`;
+        const st = getCategoryBadgeStyle(item.type);
+
+        [previewSheet, printGrid].forEach((container, idx) => {
+          const card = document.createElement('div');
+          card.className = 'border-2 border-dashed border-slate-300 rounded-xl p-3 flex flex-col items-center text-center bg-white';
+
+          const canvas = document.createElement('canvas');
+          canvas.className = 'w-32 h-32 mb-2';
+
+          new QRious({
+            element: canvas,
+            value: fullUrl,
+            size: 240,
+            level: 'M'
+          });
+
+          const titleEl = document.createElement('div');
+          titleEl.className = 'font-extrabold text-sm text-slate-900';
+          titleEl.textContent = `CÓDIGO QR #${item.id}`;
+
+          const subEl = document.createElement('div');
+          subEl.className = 'text-[10px] font-semibold text-slate-500 mt-0.5';
+          subEl.textContent = idx === 0 ? `${st.label}` : '¡Escanéame para descubrir tu sorpresa!';
+
+          card.appendChild(titleEl);
+          card.appendChild(canvas);
+          card.appendChild(subEl);
+          container.appendChild(card);
+        });
+      });
+
+      // Agregar también el QR Especial del Mensaje Final de Cumpleaños Coder/RPG al final de la hoja
+      const finalRpgItem = {
+        id: 'FINAL',
+        type: 'rpg_birthday',
+        badge: '💻 Cumpleaños RPG',
+        title: birthdayRPGConfig.title,
+        subtitle: birthdayRPGConfig.subtitle,
+        description: birthdayRPGConfig.message,
+        icon: birthdayRPGConfig.icon || '💻'
+      };
+      const finalEncoded = shouldEmbed ? `?d=${encodePayload(finalRpgItem)}` : '';
+      const finalUrl = `${baseUrl}#cumple${finalEncoded}`;
+
+      [previewSheet, printGrid].forEach((container, idx) => {
+        const card = document.createElement('div');
+        card.className = 'border-2 border-dashed border-emerald-500 rounded-xl p-3 flex flex-col items-center text-center bg-emerald-50/40';
+
+        const canvas = document.createElement('canvas');
+        canvas.className = 'w-32 h-32 mb-2';
+
+        new QRious({
+          element: canvas,
+          value: finalUrl,
+          size: 240,
+          level: 'M'
+        });
+
+        const titleEl = document.createElement('div');
+        titleEl.className = 'font-extrabold text-sm text-slate-900';
+        titleEl.textContent = '💻 QR FINAL CUMPLEAÑOS';
+
+        const subEl = document.createElement('div');
+        subEl.className = 'text-[10px] font-semibold text-emerald-700 mt-0.5';
+        subEl.textContent = idx === 0 ? '💻 Mensaje Coder + Música RPG' : '¡Escanéame al final de la aventura!';
+
+        card.appendChild(titleEl);
+        card.appendChild(canvas);
+        card.appendChild(subEl);
+        container.appendChild(card);
+      });
+    }
+
+    // Descargar el archivo index.html con los nuevos datos grabados adentro para GitHub Pages
+    function downloadUpdatedHTML() {
+      const currentDoc = document.documentElement.outerHTML;
+      const newDefaultBlock = `/*__START_DEFAULT_DATA__*/\n    const DEFAULT_BIRTHDAY_RPG = ${JSON.stringify(birthdayRPGConfig, null, 6)};\n\n    const DEFAULT_QR_DATA = ${JSON.stringify(qrList, null, 6)};\n    /*__END_DEFAULT_DATA__*/`;
+      const updatedHTML = '<!DOCTYPE html>\n' + currentDoc.replace(
+        /\/\*__START_DEFAULT_DATA__\*\/[\s\S]*?\/\*__END_DEFAULT_DATA__\*\//,
+        newDefaultBlock
+      );
+
+      const blob = new Blob([updatedHTML], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'index.html';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     }
 
     // Inicialización al cargar la página
